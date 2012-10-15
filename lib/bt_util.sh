@@ -137,10 +137,26 @@ function bt_strstack_pop() {
     done
 }
 
+# Set shell attributes using format of the SHELLOPTS variable
+# Args: shellopts
+function bt_attrs_set_shellopts() {
+    declare -r shellopts="$1"
+    declare -r on_pattern="^(${shellopts//:/|})\$"
+    declare attr
+
+    for attr in `set -o | awk '{print \$1}'`; do
+        if [[ $attr =~ $on_pattern ]]; then
+            set -o $attr
+        else
+            set +o $attr
+        fi
+    done
+}
+
 # Push shell attribute state to the state stack, optionally invoke "set".
 # Args: [set_arg...]
 function bt_attrs_push() {
-    bt_arrstack_push _BT_ATTR_STACK "`set +o`"
+    bt_arrstack_push _BT_ATTR_STACK "$SHELLOPTS"
     if [ $# != 0 ]; then
         set "$@"
     fi
@@ -148,7 +164,7 @@ function bt_attrs_push() {
 
 # Pop shell attribute state from the state stack.
 function bt_attrs_pop() {
-    eval "`bt_arrstack_peek _BT_ATTR_STACK`"
+    bt_attrs_set_shellopts "`bt_arrstack_peek _BT_ATTR_STACK`"
     bt_arrstack_pop _BT_ATTR_STACK
 }
 
