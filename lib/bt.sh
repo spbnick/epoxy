@@ -56,25 +56,29 @@ declare -r _BT_SH=
 
 # Exit this test with PASSED status.
 # The final result will still depend on subtest status.
-function bt_pass() {
+function bt_pass()
+{
     exit 0
 }
 
 # Exit this test with FAILED status.
-function bt_fail() {
+function bt_fail()
+{
     exit 1
 }
 
 # Exit the test immediately with PANICED status, skipping teardown,
 # causing all the super-tests to panic also.
-function bt_panic() {
+function bt_panic()
+{
     trap - EXIT
     _bt_conclude $BT_TEST_STATUS_PANICED
 }
 
 # Log current test status
 # Args: status
-function _bt_log_status() {
+function _bt_log_status()
+{
     declare -r status="$1"
     bt_assert bt_test_status_is_valid \$status
     declare -r name="$_BT_NAME_STACK"
@@ -83,7 +87,8 @@ function _bt_log_status() {
 
 # Register subtest status
 # Args: status
-function _bt_register_status() {
+function _bt_register_status()
+{
     declare -r status="$1"
     bt_assert bt_test_status_is_valid \$status
     declare -r count_var="_BT_`bt_test_status_to_str $status`_COUNT"
@@ -93,7 +98,8 @@ function _bt_register_status() {
 # Conclude this test with a status, according to protocol: log status if
 # necessary and exit with appropriate exit status.
 # Args: status
-function _bt_conclude() {
+function _bt_conclude()
+{
     declare -r status="$1"
 
     if $_BT_PROTOCOL; then
@@ -112,7 +118,8 @@ function _bt_conclude() {
 #   -s, --status=STATUS Expect STATUS exit status/pipestatus. Default is 0.
 #   -w, --waived        Don't evaluate, report and count subtest as WAIVED.
 #
-function bt_eval() {
+function bt_eval()
+{
     # NOTE: Locals are prepended with underscore to prevent clashes with
     #       variables referenced in supplied eval arguments.
     declare _waived=false
@@ -181,7 +188,8 @@ function bt_eval() {
 # Options:
 #   -w, --waived        Don't run the test, report and count it as WAIVED.
 #
-function bt_subtest_begin() {
+function bt_subtest_begin()
+{
     declare waived=false
     declare args=`getopt --name ${FUNCNAME[0]} \
                          --options +w \
@@ -220,7 +228,8 @@ function bt_subtest_begin() {
 }
 
 # Conclude a subtest execution.
-function bt_subtest_end() {
+function bt_subtest_end()
+{
     # Grab the last status, first thing
     declare status=$?
     # Restore errexit state
@@ -250,7 +259,8 @@ function bt_subtest_end() {
 # Options:
 #   -w, --waived        Don't run the test, report and count it as WAIVED.
 #
-function bt_subtest() {
+function bt_subtest()
+{
     declare -a opts=()
     declare args=`getopt --name ${FUNCNAME[0]} \
                          --options +w \
@@ -283,13 +293,15 @@ function bt_subtest() {
 
 # Set teardown command
 # Args: ...
-function bt_set_teardown() {
+function bt_set_teardown()
+{
     _BT_TEARDOWN=("$@")
 }
 
 # Assign positional parameters to a list of variables.
 # Args: [variable_name...] [-- [parameter_value...]]
-function _bt_read_args() {
+function _bt_read_args()
+{
     # NOTE: Locals are prepended with underscore to prevent clashes with
     #       parameter names
     declare _a
@@ -326,7 +338,8 @@ function _bt_read_args() {
 }
 
 # Handle test EXIT trap
-function _bt_exit_trap() {
+function _bt_exit_trap()
+{
     # Grab the last status, first thing
     declare status="$?"
 

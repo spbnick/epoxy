@@ -12,7 +12,8 @@ declare -a _BT_ATTR_STACK=()
 
 # Output a backtrace
 # Args: [start_frame]
-function bt_backtrace() {
+function bt_backtrace()
+{
     declare start_frame=${1:-0}
     declare command="$BASH_COMMAND"
     declare -i frame
@@ -32,7 +33,8 @@ function bt_backtrace() {
 # Output a backtrace and abort execution by sending SIGABRT to $BASHPID,
 # optionally outputting a message to stderr.
 # Args [message...]
-function bt_abort() {
+function bt_abort()
+{
     {
         echo "Backtrace:"
         bt_backtrace
@@ -48,13 +50,15 @@ function bt_abort() {
 # Evaluate and execute an assertion verification command; abort execution, if
 # it fails.
 # Args [eval_arg...]
-function bt_assert() {
+function bt_assert()
+{
     eval "$@" || bt_abort "Assertion failed: $@"
 }
 
 # Push values to an array-based stack.
 # Args: stack value...
-function bt_arrstack_push() {
+function bt_arrstack_push()
+{
     declare -r _stack="$1"
     shift
     while (( $# > 0 )); do
@@ -65,7 +69,8 @@ function bt_arrstack_push() {
 
 # Get a value from the top of an array-based stack.
 # Args: stack
-function bt_arrstack_peek() {
+function bt_arrstack_peek()
+{
     declare -r _stack="$1"
     if eval "test \${#$_stack[@]} -eq 0"; then
         bt_abort "Not enough values in an array-based stack"
@@ -75,7 +80,8 @@ function bt_arrstack_peek() {
 
 # Pop values from an array-based stack.
 # Args: stack [num_values]
-function bt_arrstack_pop() {
+function bt_arrstack_pop()
+{
     declare -r _stack="$1"
     declare _num_values="${2:-1}"
 
@@ -94,7 +100,8 @@ function bt_arrstack_pop() {
 
 # Push values to a string-based stack.
 # Args: _stack _sep _value...
-function bt_strstack_push() {
+function bt_strstack_push()
+{
     declare -r _stack="$1"; shift
     declare -r _sep="$1"; shift
     while (( $# > 0 )); do
@@ -108,7 +115,8 @@ function bt_strstack_push() {
 
 # Get a value from the top of a string-based stack.
 # Args: _stack _sep
-function bt_strstack_peek() {
+function bt_strstack_peek()
+{
     declare -r _stack="$1"
     declare -r _sep="$2"
     if eval "test -z \"\$$_stack\""; then
@@ -119,7 +127,8 @@ function bt_strstack_peek() {
 
 # Pop values from a string-based stack.
 # Args: _stack _sep [_num_values]
-function bt_strstack_pop() {
+function bt_strstack_pop()
+{
     declare -r _stack="$1"
     declare -r _sep="$2"
     declare _num_values="${3:-1}"
@@ -139,7 +148,8 @@ function bt_strstack_pop() {
 
 # Set shell attributes using format of the SHELLOPTS variable
 # Args: shellopts
-function bt_attrs_set_shellopts() {
+function bt_attrs_set_shellopts()
+{
     declare -r shellopts="$1"
     declare -r normal_shellopts=":$shellopts:"
     declare attr
@@ -156,7 +166,8 @@ function bt_attrs_set_shellopts() {
 
 # Push shell attribute state to the state stack, optionally invoke "set".
 # Args: [set_arg...]
-function bt_attrs_push() {
+function bt_attrs_push()
+{
     bt_arrstack_push _BT_ATTR_STACK "$SHELLOPTS"
     if [ $# != 0 ]; then
         set "$@"
@@ -164,14 +175,16 @@ function bt_attrs_push() {
 }
 
 # Pop shell attribute state from the state stack.
-function bt_attrs_pop() {
+function bt_attrs_pop()
+{
     bt_attrs_set_shellopts "`bt_arrstack_peek _BT_ATTR_STACK`"
     bt_arrstack_pop _BT_ATTR_STACK
 }
 
 # Convert pipestatus array elements to a single status code.
 # Args: [status...]
-function bt_pipestatus_to_status() {
+function bt_pipestatus_to_status()
+{
     if [ -o pipefail ]; then
         declare last=0
         for s in "$@"; do
@@ -188,7 +201,8 @@ function bt_pipestatus_to_status() {
 
 # Check if two exit statuses or pipestatuses are equal.
 # Args: s1 s2
-function bt_pipestatus_eq() {
+function bt_pipestatus_eq()
+{
     if [[ "$1" == *" "* ]]; then
         [[ "$2" == *" "* && "$1" == "$2" ||
            `bt_pipestatus_to_status $1` == "$2" ]]

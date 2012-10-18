@@ -15,7 +15,8 @@ declare -r -i BT_TEST_STATUS_PASSED=1 \
 
 # Check if a test stat code is valid
 # Args: status
-function bt_test_status_is_valid() {
+function bt_test_status_is_valid()
+{
     declare -r status="$1"
     [[ "$status" != "" && \
        "$status" != [^0-9] && \
@@ -26,7 +27,8 @@ function bt_test_status_is_valid() {
 # Convert status code to string
 # Args: status_code
 # Output: status string
-function bt_test_status_to_str() {
+function bt_test_status_to_str()
+{
     declare -r status="$1"
 
     bt_assert bt_test_status_is_valid \$status
