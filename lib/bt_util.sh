@@ -141,16 +141,17 @@ function bt_strstack_pop() {
 # Args: shellopts
 function bt_attrs_set_shellopts() {
     declare -r shellopts="$1"
-    declare -r on_pattern="^(${shellopts//:/|})\$"
+    declare -r normal_shellopts=":$shellopts:"
     declare attr
+    declare state
 
-    for attr in `set -o | awk '{print \$1}'`; do
-        if [[ $attr =~ $on_pattern ]]; then
+    while read -r attr state; do
+        if [[ "$normal_shellopts" == *:"$attr":* ]]; then
             set -o $attr
         else
             set +o $attr
         fi
-    done
+    done < <(set -o)
 }
 
 # Push shell attribute state to the state stack, optionally invoke "set".
