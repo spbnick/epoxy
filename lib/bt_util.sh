@@ -1,4 +1,5 @@
-# Bash test framework - utilities library
+#
+# Utilities library
 #
 # This copyrighted material is made available to anyone wishing
 # to use, modify, copy, or redistribute it subject to the terms
@@ -15,44 +16,49 @@ declare -a _BT_ATTR_STACK=()
 function bt_backtrace()
 {
     declare start_frame=${1:-0}
-    declare command="$BASH_COMMAND"
-    declare -i frame
-    declare -i argv=${#BASH_ARGV[@]}-1
-    declare -i argc
-    for ((frame = ${#BASH_LINENO[@]} - 2; frame > start_frame; frame--)); do
-        echo -n "${BASH_SOURCE[frame+1]}:${BASH_LINENO[frame]}:" \
-                "${FUNCNAME[frame]}"
-        for ((argc = ${BASH_ARGC[frame]}; argc > 0; argc--)); do
-            echo -n " ${BASH_ARGV[argv]}"
-            argv=argv-1
-        done
-        echo
+    declare frame
+    declare argv=0
+    declare argc
+
+    for ((frame = 0; frame < ${#BASH_LINENO[@]} - 1; frame++)); do
+        if ((frame > start_frame)); then
+            echo -n "${BASH_SOURCE[frame+1]}:${BASH_LINENO[frame]}:" \
+                    "${FUNCNAME[frame]}"
+            for ((argc = ${BASH_ARGC[frame]}; argc > 0; argc--)); do
+                echo -n " ${BASH_ARGV[argv + argc - 1]}"
+            done
+            echo
+        fi
+        argv=$((argv + BASH_ARGC[frame]))
     done
 }
 
-# Output a backtrace and abort execution by sending SIGABRT to $BASHPID,
-# optionally outputting a message to stderr.
-# Args [message...]
+# Abort execution by sending SIGABRT to $BASHPID, optionally outputting a
+# message.
+# Args: [message...]
 function bt_abort()
 {
-    {
-        echo "Backtrace:"
-        bt_backtrace
-        if [ $# == 0 ]; then
-            echo "Aborted"
-        else
-            echo "$@"
-        fi
-    } >&2
+    if [ $# > 0 ]; then
+        echo "$@" >&2
+    fi
     kill -s SIGABRT $BASHPID
 }
 
-# Evaluate and execute an assertion verification command; abort execution, if
-# it fails.
-# Args [eval_arg...]
-function bt_assert()
+# Abort execution if an assertion is invalid (a command fails).
+# Args: [command [arg...]]
+function bt_abort_assert()
 {
-    eval "$@" || bt_abort "Assertion failed: $@"
+    declare _status=
+    bt_attrs_push +o errexit
+    (
+        bt_attrs_pop
+        "$@"
+    )
+    _status=$?
+    bt_attrs_pop
+    if [ $_status != 0 ]; then
+        bt_abort "Assertion failed: $@"
+    fi
 }
 
 # Push values to an array-based stack.
@@ -168,7 +174,13 @@ function bt_attrs_set_shellopts()
 # Args: [set_arg...]
 function bt_attrs_push()
 {
-    bt_arrstack_push _BT_ATTR_STACK "$SHELLOPTS"
+    # Using process substitution instead of command substitution,
+    # because the latter resets errexit.
+    declare opts
+    if read -rd '' opts < <(set +o); [ $? != 1 ]; then
+        bt_abort Failed to read attrs
+    fi
+    bt_arrstack_push _BT_ATTR_STACK "$opts"
     if [ $# != 0 ]; then
         set "$@"
     fi
@@ -177,7 +189,7 @@ function bt_attrs_push()
 # Pop shell attribute state from the state stack.
 function bt_attrs_pop()
 {
-    bt_attrs_set_shellopts "`bt_arrstack_peek _BT_ATTR_STACK`"
+    eval "`bt_arrstack_peek _BT_ATTR_STACK`"
     bt_arrstack_pop _BT_ATTR_STACK
 }
 
@@ -211,5 +223,59 @@ function bt_pipestatus_eq()
            "$1" == "$2" ]]
     fi
 }
+
+# Assign positional parameters to a list of variables.
+# Args: [variable_name...] [-- [parameter_value...]]
+function bt_read_args()
+{
+    # NOTE: Locals are prepended with underscore to prevent clashes with
+    #       parameter names
+    declare _a
+    declare -a _names=()
+    declare -i _i
+
+    _i=0
+    while (( $# > 0 )); do
+        _a="$1"
+        shift
+        if [ "$_a" == "--" ]; then
+            break;
+        fi
+        _names[_i]="$_a"
+        _i=_i+1
+    done
+
+    _i=0
+    while (( $# > 0 && _i < ${#_names[@]} )); do
+        eval "${_names[_i]}=\"$1\""
+        shift
+        _i=_i+1
+    done
+
+    if (( $# > 0 || _i < ${#_names[@]} )); then
+        echo "Invalid number of arguments" >&2
+        echo -n "Usage: `basename \"$0\"`" >&2
+        for (( _i = 0; _i < ${#_names[@]}; _i++ )); do
+            echo -n " <${_names[_i]}>"
+        done
+        echo >&2
+        return 1
+    fi
+}
+
+# Check if a boolean value is valid
+# Args: value
+function bt_bool_is_valid()
+{
+    bt_abort_assert [ ${1+set} ]
+    [ "$1" == "true" ] || [ "$1" == "false" ]
+}
+
+# Make sure getopt compatibility isn't enforced
+unset GETOPT_COMPATIBLE
+# Check if getopt is enhanced and supports quoting
+if getopt --test >/dev/null; [ $? != 4 ]; then
+    bt_abort_assert Enhanced getopt not found
+fi
 
 fi # _BT_UTIL_SH

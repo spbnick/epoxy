@@ -1,194 +1,147 @@
-# Bash test framework
+#
+# Test library
 #
 # This copyrighted material is made available to anyone wishing
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-# Exit immediately, if a simple command exits with non-zero status
-set -o errexit
-# Pipe status is the status of the rightmost unsuccessful command
-set -o pipefail
-# Abort if expanding an unset variable
-set -o nounset
-# Enable extended debugging.
-# Needed for DEBUG trap propagation and BASH_ARGV/BASH_ARGC.
-shopt -s extdebug
-
-. bt_util.sh
-. bt_test.sh
-
-# Verify BT_PROTOCOL value
-if [ -n "${BT_PROTOCOL:-}" ] &&
-   [ "$BT_PROTOCOL" != false ] && [ "$BT_PROTOCOL" != true ]; then
-    echo "Invalid value of BT_PROTOCOL environment variable:" \
-         "\"$BT_PROTOCOL\", expecting \"true\", \"false\", or nothing" >&2
-    exit 127
-fi
-
-if [ $BASH_SUBSHELL == "${_BT_SUBSHELL:-}" ]; then
-    bt_abort "Re-initializing test in the same (sub)shell"
-fi
-
-# Subshell depth of the last initialized test
-declare _BT_SUBSHELL=$BASH_SUBSHELL
-
-# Use test protocol for this test, if true
-declare _BT_PROTOCOL="${BT_PROTOCOL:-false}"
-
-# Test name stack
-declare -x _BT_NAME_STACK="${_BT_NAME_STACK:-}"
-
-# Passed subtest counter
-declare -i _BT_PASSED_COUNT=0
-# Waived subtest counter
-declare -i _BT_WAIVED_COUNT=0
-# Failed subtest counter
-declare -i _BT_FAILED_COUNT=0
-# Paniced subtest counter
-declare -i _BT_PANICED_COUNT=0
-
-# Teardown command argv array
-declare -a _BT_TEARDOWN=()
-
-# If wasn't included in the same shell yet
 if [ -z ${_BT_SH+set} ]; then
 declare -r _BT_SH=
 
-# Exit this test with PASSED status.
-# The final result will still depend on subtest status.
-function bt_pass()
+. bt_util.sh
+. bt_status.sh
+
+# Protocol for this test ("generic", or "test")
+declare _BT_PROTOCOL
+# Protocol for sub-tests (nothing, "generic", or "test")
+declare -x BT_PROTOCOL
+
+# Assert name stack
+declare -x _BT_NAME_STACK
+
+# Passed assert counter
+declare -i _BT_COUNT_PASSED
+# Waived assert counter
+declare -i _BT_COUNT_WAIVED
+# Failed assert counter
+declare -i _BT_COUNT_FAILED
+# Errored assert counter
+declare -i _BT_COUNT_ERRORED
+# Paniced assert counter
+declare -i _BT_COUNT_PANICED
+# Aborted assert counter
+declare -i _BT_COUNT_ABORTED
+
+# Teardown command argc array
+declare -a _BT_TEARDOWN_ARGC
+# Teardown command argv array
+declare -a _BT_TEARDOWN_ARGV
+
+# Initialize the test.
+function _bt_init()
 {
-    exit 0
+    # Verify BT_PROTOCOL value
+    if [ -n "${BT_PROTOCOL:-}" ] &&
+       [ "$BT_PROTOCOL" != "generic" ] && [ "$BT_PROTOCOL" != "test" ]; then
+        echo "Invalid value of BT_PROTOCOL environment variable:" \
+             "\"$BT_PROTOCOL\","
+             "expecting \"test\", \"generic\", or nothing" >&2
+        exit 127
+    fi
+
+    _BT_PROTOCOL="${BT_PROTOCOL:-generic}"
+    _BT_NAME_STACK="${_BT_NAME_STACK:-}"
+    _BT_COUNT_PASSED=0
+    _BT_COUNT_WAIVED=0
+    _BT_COUNT_FAILED=0
+    _BT_COUNT_ERRORED=0
+    _BT_COUNT_PANICED=0
+    _BT_COUNT_ABORTED=0
+    _BT_TEARDOWN_ARGC=()
+    _BT_TEARDOWN_ARGV=()
+
+    # Set EXIT trap as soon as possible to capture any internal errors
+    trap _bt_trap_exit EXIT
+
+    # Set SIGABRT trap to capture aborts
+    trap _bt_trap_sigabrt SIGABRT
+
+    # Ask all subtests to use the test protocol.
+    # Exporting to all subprocesses unconditionally to prevent ignoring waived
+    # state if a subtest is accidentally invoked with bt_assert, instead of
+    # bt.
+    BT_PROTOCOL=test
 }
 
-# Exit this test with FAILED status.
-function bt_fail()
+# Finalize the test.
+# Args: status
+function _bt_fini()
 {
+    declare -r status="$1"
+    bt_abort_assert bt_status_is_valid "$status"
+
+    trap - EXIT
+
+    if [ $_BT_PROTOCOL == test ]; then
+        exit "$status"
+    else
+        _bt_log_status "$_BT_NAME_STACK" $status
+        [ "$status" -le $BT_STATUS_WAIVED ]
+        exit
+    fi
+}
+
+# Exit the test immediately with PANICED status, skipping (the rest of)
+# teardown, optionally outputting a message to stderr.
+# Args: [message...]
+function bt_panic()
+{
+    if [ $# != 0 ]; then
+        echo "$@" >&2
+    fi
+    _bt_fini $BT_STATUS_PANICED
+}
+
+# Exit the test with ERRORED status, optionally outputting a message to
+# stderr.
+# Args: [message...]
+function bt_error()
+{
+    if [ $# != 0 ]; then
+        echo "$@" >&2
+    fi
     exit 1
 }
 
-# Exit the test immediately with PANICED status, skipping teardown,
-# causing all the super-tests to panic also.
-function bt_panic()
-{
-    trap - EXIT
-    _bt_conclude $BT_TEST_STATUS_PANICED
-}
-
 # Log current test status
-# Args: status
+# Args: name status
 function _bt_log_status()
 {
-    declare -r status="$1"
-    bt_assert bt_test_status_is_valid \$status
-    declare -r name="$_BT_NAME_STACK"
-    echo "${name:+$name }`bt_test_status_to_str $status`" >&2
+    declare -r name="$1"
+    declare -r status="$2"
+    bt_abort_assert bt_status_is_valid "$status"
+    echo "${name:+$name }`bt_status_to_str $status`" >&2
 }
 
-# Register subtest status
+# Register test status
 # Args: status
 function _bt_register_status()
 {
     declare -r status="$1"
-    bt_assert bt_test_status_is_valid \$status
-    declare -r count_var="_BT_`bt_test_status_to_str $status`_COUNT"
+    bt_abort_assert bt_status_is_valid "$status"
+    declare -r status_str=`bt_status_to_str $status`
+    declare -r count_var="_BT_COUNT_$status_str"
     eval "$count_var=$count_var+1"
 }
 
-# Conclude this test with a status, according to protocol: log status if
-# necessary and exit with appropriate exit status.
-# Args: status
-function _bt_conclude()
-{
-    declare -r status="$1"
-
-    if $_BT_PROTOCOL; then
-        exit $status
-    else
-        _bt_log_status $status
-        [ $status -le $BT_TEST_STATUS_WAIVED ] && exit 0 || exit 1
-    fi
-}
-
-# Evaluate and execute a general subtest command expression.
+# Setup an assertion.
 #
-# Args: [option...] [--] subtest_name [eval_arg...]
+# Args: [option...] [--] name
 #
 # Options:
-#   -s, --status=STATUS Expect STATUS exit status/pipestatus. Default is 0.
-#   -w, --waived        Don't evaluate, report and count subtest as WAIVED.
+#   -w, --waived    Waive the assertion.
 #
-function bt_eval()
-{
-    # NOTE: Locals are prepended with underscore to prevent clashes with
-    #       variables referenced in supplied eval arguments.
-    declare _waived=false
-    declare _expected_status=0
-    declare _args=`getopt --name ${FUNCNAME[0]} \
-                          --options +s:w \
-                          --longoptions status:,waived \
-                          -- "$@"`
-    declare _status
-    eval set -- "$_args"
-
-    while true; do
-        case "$1" in
-            -w|--waived)
-                _waived=true
-                shift
-                ;;
-            -s|--status)
-                _expected_status="$2";
-                if [[ "$_expected_status" == "" ||
-                      "$_expected_status" == *[^" "0-9]* ]]; then
-                    bt_abort "Invalid -s/--status option value"
-                fi
-                shift 2
-                ;;
-            --)
-                shift
-                break
-                ;;
-            *)
-                bt_abort "Unknown option: $1"
-                ;;
-        esac
-    done
-
-    if [ $# == 0 ]; then
-        bt_abort "Invalid number of positional arguments"
-    fi
-    declare -r _name="$1"
-    shift
-
-    # "Enter" the test
-    bt_strstack_push _BT_NAME_STACK / "$_name"
-
-    if $_waived; then
-        _status=$BT_TEST_STATUS_WAIVED
-    else
-        if eval "$@; _status=\"\${PIPESTATUS[*]}\"";
-           bt_pipestatus_eq "$_status" "$_expected_status"; then
-            _status=$BT_TEST_STATUS_PASSED
-        else
-            _status=$BT_TEST_STATUS_FAILED
-        fi
-    fi
-
-    _bt_log_status $_status
-    # "Exit" the test
-    bt_strstack_pop _BT_NAME_STACK /
-    _bt_register_status $_status
-}
-
-# Setup a test protocol-conforming subtest execution.
-#
-# Args: [option...] [--] subtest_name
-#
-# Options:
-#   -w, --waived        Don't run the test, report and count it as WAIVED.
-#
-function bt_subtest_begin()
+function _bt_begin()
 {
     declare waived=false
     declare args=`getopt --name ${FUNCNAME[0]} \
@@ -216,52 +169,211 @@ function bt_subtest_begin()
     if [ $# != 1 ]; then
         bt_abort "Invalid number of positional arguments"
     fi
-
     declare -r name="$1"
+    shift
 
-    # "Enter" the test
+    # Export "waived" flag, so if the command is waived it could exit
+    # immediately
+    declare -g -x _BT_WAIVED="$waived"
+
+    # "Enter" the assertion
     bt_strstack_push _BT_NAME_STACK / "$name"
-    # Export "waived" flag, so if subtest is waived it could exit immediately
-    export _BT_WAIVED="$waived"
-    # Disable errexit so a "failed" subtest doesn't terminate this one
+}
+
+# Conclude an assertion.
+#
+# Args: name status
+function _bt_end()
+{
+    declare status="$1"
+    declare name="$2"
+
+    bt_abort_assert [ ${_BT_WAIVED+set} ]
+    if $_BT_WAIVED; then
+        status=$BT_STATUS_WAIVED
+    fi
+    unset _BT_WAIVED
+
+    bt_abort_assert bt_status_is_valid $status
+    _bt_log_status "$_BT_NAME_STACK" $status
+    _bt_register_status $status
+    if [ $status -ge $BT_STATUS_PANICED ]; then
+        _bt_fini $status
+    fi
+}
+
+# Setup a command assertion.
+#
+# Args: [option...] [--] name
+#
+# Options:
+#   -w, --waived        Waive the assertion.
+#   -s, --status=STATUS Expect STATUS exit status. Default is 0.
+#
+function bt_assert_begin()
+{
+    declare waived=false
+    declare expected_status=0
+    declare args=`getopt --name ${FUNCNAME[0]} \
+                         --options +s:w \
+                         --longoptions status:,waived \
+                         -- "$@"`
+    eval set -- "$args"
+
+    while true; do
+        case "$1" in
+            -w|--waived)
+                waived=true
+                shift
+                ;;
+            -s|--status)
+                expected_status="$2";
+                if [[ "$expected_status" == "" ||
+                      "$expected_status" == *[^" "0-9]* ]]; then
+                    bt_abort "Invalid -s/--status option value"
+                fi
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                bt_abort "Unknown option: $1"
+                ;;
+        esac
+    done
+
+    if [ $# == 0 ]; then
+        bt_abort "Invalid number of positional arguments"
+    fi
+    declare -r name="$1"
+    shift
+
+    # Remember expected status - to be compared to the command exit status
+    declare -g _BT_EXPECTED_STATUS="$expected_status"
+
+    # Export "waived" flag, so if the command is waived it could exit
+    # immediately
+    declare -g -x _BT_WAIVED="$waived"
+
+    # "Enter" the assertion
+    bt_strstack_push _BT_NAME_STACK / "$name"
+    # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
 }
 
-# Conclude a subtest execution.
-function bt_subtest_end()
+# Conclude a command assertion.
+function bt_assert_end()
 {
     # Grab the last status, first thing
     declare status=$?
+    declare name="$_BT_NAME_STACK"
     # Restore errexit state
     bt_attrs_pop
-    # Reset "waived" flag, so it doesn't affect anything else
+    # "Exit" the assertion
+    bt_strstack_pop _BT_NAME_STACK /
+
+    bt_abort_assert [ ${_BT_EXPECTED_STATUS+set} ]
+    if [ $status == "$_BT_EXPECTED_STATUS" ]; then
+        status=$BT_STATUS_PASSED
+    else
+        status=$BT_STATUS_FAILED
+    fi
+    unset _BT_EXPECTED_STATUS
+
+    bt_abort_assert [ ${_BT_WAIVED+set} ]
+    if $_BT_WAIVED; then
+        status=$BT_STATUS_WAIVED
+    fi
     unset _BT_WAIVED
 
-    if ! bt_test_status_is_valid $status; then
-        echo "Invalid $_BT_NAME_STACK" \
-             "test protocol exit status: $status" >&2
-        status=$BT_TEST_STATUS_FAILED
-    fi
-
-    _bt_log_status $status
-    # "Exit" the test
-    bt_strstack_pop _BT_NAME_STACK /
+    bt_abort_assert bt_status_is_valid $status
+    _bt_log_status "$name" $status
     _bt_register_status $status
-    if [ $status == $BT_TEST_STATUS_PANICED ]; then
-        bt_panic
+    if [ $status -ge $BT_STATUS_PANICED ]; then
+        _bt_fini $status
     fi
 }
 
-# Execute a test protocol-conforming subtest command.
+# Assert a command.
 #
-# Args: [option...] [--] subtest_name subtest_executable [subtest_arg...]
+# Args: [option...] [--] name [command [arg...]]
 #
 # Options:
-#   -w, --waived        Don't run the test, report and count it as WAIVED.
+#   -w, --waived        Waive the assertion.
+#   -s, --status=STATUS Expect STATUS exit status. Default is 0.
 #
-function bt_subtest()
+function bt_assert()
 {
-    declare -a opts=()
+    declare waived=false
+    declare expected_status=0
+    declare args=`getopt --name ${FUNCNAME[0]} \
+                         --options +s:w \
+                         --longoptions status:,waived \
+                         -- "$@"`
+    declare -a begin_args=()
+    eval set -- "$args"
+
+    while true; do
+        case "$1" in
+            -w|--waived)
+                waived=true
+                shift
+                ;;
+            -s|--status)
+                expected_status="$2";
+                if [[ "$expected_status" == "" ||
+                      "$expected_status" == *[^" "0-9]* ]]; then
+                    bt_abort "Invalid -s/--status option value"
+                fi
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                bt_abort "Unknown option: $1"
+                ;;
+        esac
+    done
+
+    if [ $# == 0 ]; then
+        bt_abort "Invalid number of positional arguments"
+    fi
+    declare -r name="$1"
+    shift
+
+    if $waived; then
+        begin_args[${#begin_args[@]}]="--waived"
+    fi
+
+    if [ "$expected_status" != 0 ]; then
+        begin_args[${#begin_args[@]}]="--status"
+        begin_args[${#begin_args[@]}]="$expected_status"
+    fi
+
+    begin_args[${#begin_args[@]}]="--"
+    begin_args[${#begin_args[@]}]="$name"
+
+    bt_assert_begin "${begin_args[@]}"
+    if ! $waived; then
+        "$@"
+    fi
+    bt_assert_end
+}
+
+# Setup a test assertion.
+#
+# Args: [option...] [--] name
+#
+# Options:
+#   -w, --waived        Waive the assertion.
+#
+function bt_begin()
+{
+    declare waived=false
     declare args=`getopt --name ${FUNCNAME[0]} \
                          --options +w \
                          --longoptions waived \
@@ -270,118 +382,198 @@ function bt_subtest()
 
     while true; do
         case "$1" in
-            -w|--waived)    bt_arrstack_push opts "$1"; shift;;
-            --)             shift; break;;
-            *)              bt_abort "Unknown option: $1";;
+            -w|--waived)
+                waived=true
+                shift
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                bt_abort "Unknown option: $1"
+                ;;
         esac
     done
 
-    if [ $# -lt 2 ]; then
+    if [ $# != 1 ]; then
         bt_abort "Invalid number of positional arguments"
     fi
     declare -r name="$1"
     shift
 
-    if [ ${#opts[@]} == 0 ]; then
-        bt_subtest_begin -- "$name"
+    # Export "waived" flag, so if the command is waived it could exit
+    # immediately
+    declare -g -x _BT_WAIVED="$waived"
+
+    # "Enter" the assertion
+    bt_strstack_push _BT_NAME_STACK / "$name"
+
+    # Disable errexit so a failed command doesn't exit this shell
+    bt_attrs_push +o errexit
+}
+
+# Conclude a test assertion.
+function bt_end()
+{
+    # Grab the last status, first thing
+    declare status=$?
+    declare name="$_BT_NAME_STACK"
+    # Restore errexit state
+    bt_attrs_pop
+    # "Exit" the assertion
+    bt_strstack_pop _BT_NAME_STACK /
+
+    bt_abort_assert [ ${_BT_WAIVED+set} ]
+    if $_BT_WAIVED; then
+        status=$BT_STATUS_WAIVED
+    fi
+    unset _BT_WAIVED
+
+    bt_abort_assert bt_status_is_valid $status
+    _bt_log_status "$name" $status
+    _bt_register_status $status
+    if [ $status -ge $BT_STATUS_PANICED ]; then
+        _bt_fini $status
+    fi
+}
+
+# Assert a test.
+#
+# Args: [option...] [--] name [command [arg...]]
+#
+# Options:
+#   -w, --waived        Waive the assertion.
+#
+function bt()
+{
+    declare waived=false
+    declare -a opts=()
+    declare args=`getopt --name ${FUNCNAME[0]} \
+                         --options +w \
+                         --longoptions waived \
+                         -- "$@"`
+    declare -a begin_args=()
+    eval set -- "$args"
+
+    while true; do
+        case "$1" in
+            -w|--waived)
+                waived=true
+                shift
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                bt_abort "Unknown option: $1"
+                ;;
+        esac
+    done
+
+    if [ $# == 0 ]; then
+        bt_abort "Invalid number of positional arguments"
+    fi
+    declare -r name="$1"
+    shift
+
+    if $waived; then
+        begin_args[${#begin_args[@]}]="--waived"
+    fi
+
+    begin_args[${#begin_args[@]}]="--"
+    begin_args[${#begin_args[@]}]="$name"
+
+    bt_begin "${begin_args[@]}"
+    if [ $# != 0 ]; then
+        "$@"
     else
-        bt_subtest_begin "${opts[@]}" -- "$name"
+        (
+            . bt_init.sh
+        )
     fi
-    "$@"
-    bt_subtest_end
+    bt_end
 }
 
-# Set teardown command
+# Push a command to the teardown command stack.
 # Args: ...
-function bt_set_teardown()
+function bt_teardown_push()
 {
-    _BT_TEARDOWN=("$@")
+    bt_arrstack_push _BT_TEARDOWN_ARGC $#
+    bt_arrstack_push _BT_TEARDOWN_ARGV "$@"
 }
 
-# Assign positional parameters to a list of variables.
-# Args: [variable_name...] [-- [parameter_value...]]
-function _bt_read_args()
+# Pop commands from the teardown command stack.
+# Args: [num_commands]
+function bt_teardown_pop()
 {
-    # NOTE: Locals are prepended with underscore to prevent clashes with
-    #       parameter names
-    declare _a
-    declare -a _names=()
-    declare -i _i
-
-    _i=0
-    while (( $# > 0 )); do
-        _a="$1"
-        shift
-        if [ "$_a" == "--" ]; then
-            break;
-        fi
-        _names[_i]="$_a"
-        _i=_i+1
+    declare num_commands="${1:-1}"
+    bt_abort_assert [ "$num_commands" -le ${#_BT_TEARDOWN_ARGC[@]} ]
+    for ((; num_commands > 0; num_commands--)); do
+        bt_arrstack_pop _BT_TEARDOWN_ARGV \
+                        `bt_arrstack_peek _BT_TEARDOWN_ARGC`
+        bt_arrstack_pop _BT_TEARDOWN_ARGC
     done
-
-    _i=0
-    while (( $# > 0 && _i < ${#_names[@]} )); do
-        eval "${_names[_i]}=\"$1\""
-        shift
-        _i=_i+1
-    done
-
-    if (( $# > 0 || _i < ${#_names[@]} )); then
-        echo "Invalid number of arguments" >&2
-        echo -n "Usage: `basename \"$0\"`" >&2
-        for (( _i = 0; _i < ${#_names[@]}; _i++ )); do
-            echo -n " <${_names[_i]}>"
-        done
-        echo >&2
-        return 1
-    fi
 }
 
-# Handle test EXIT trap
-function _bt_exit_trap()
+# Execute a teardown command from the top of the teardown stack.
+function bt_teardown_exec()
+{
+    bt_abort_assert [ ${#_BT_TEARDOWN_ARGC[@]} != 0 ]
+    "${_BT_TEARDOWN_ARGV[@]: -${_BT_TEARDOWN_ARGC[-1]}}"
+}
+
+# Execute and pop all teardown commands from the teardown stack.
+function _bt_teardown()
+{
+    while [ ${#_BT_TEARDOWN_ARGC[@]} != 0 ]; do
+        bt_teardown_exec
+        bt_teardown_pop
+    done
+}
+
+# Handle EXIT trap
+function _bt_trap_exit()
 {
     # Grab the last status, first thing
     declare status="$?"
+    declare teardown_status=
 
-    # If teardown fails
-    if [ ${_BT_TEARDOWN+set} ] && ! "${_BT_TEARDOWN[@]}"; then
-        status=$BT_TEST_STATUS_PANICED
-    # else, if exiting with failure or there were failed tests
-    elif [ $status != 0 ] || [ $_BT_FAILED_COUNT != 0 ]; then
-        status=$BT_TEST_STATUS_FAILED
+    # Execute teardown in a subshell
+    bt_attrs_push +o errexit
+    (
+        bt_attrs_pop
+        _bt_teardown
+    )
+    teardown_status=$?
+    bt_attrs_pop
+
+    # If teardown failed
+    if [ $teardown_status != 0 ]; then
+        status=$BT_STATUS_PANICED
+    # else, if exiting with failure
+    elif [ $status != 0 ]; then
+        status=$BT_STATUS_ERRORED
+    # else, if there were failed tests
+    elif [ $_BT_COUNT_FAILED != 0 ]; then
+        status=$BT_STATUS_FAILED
     # else, if there were waived tests
-    elif [ $_BT_WAIVED_COUNT != 0 ]; then
-        status=$BT_TEST_STATUS_WAIVED
+    elif [ $_BT_COUNT_WAIVED != 0 ]; then
+        status=$BT_STATUS_WAIVED
     else
-        status=$BT_TEST_STATUS_PASSED
+        status=$BT_STATUS_PASSED
     fi
 
-    _bt_conclude $status
+    _bt_fini $status
+}
+
+# Handle SIGABRT
+function _bt_trap_sigabrt()
+{
+    trap - SIGABRT
+    bt_backtrace 1 >&2
+    _bt_fini $BT_STATUS_ABORTED
 }
 
 fi # _BT_SH
-
-# If entering a waived test
-if ${_BT_WAIVED:-false}; then
-    _bt_conclude $BT_TEST_STATUS_WAIVED
-fi
-
-# Make sure getopt compatibility isn't enforced
-unset GETOPT_COMPATIBLE
-# Check if getopt is enhanced and supports quoting
-if getopt --test >/dev/null; [ $? != 4 ]; then
-    echo Enhanced getopt not found >&2
-    exit 1
-fi
-
-# Set EXIT trap as soon as possible to capture any internal errors
-trap _bt_exit_trap EXIT
-
-# Ask all subtests to use test protocol.
-# Exporting to all subprocesses unconditionally to prevent ignoring waived
-# state if a subtest is accidentally invoked with bt_eval, instead of
-# bt_subtest.
-export BT_PROTOCOL=true
-
-# Parse test command line arguments
-_bt_read_args "$@"
