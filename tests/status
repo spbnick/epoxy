@@ -1,0 +1,159 @@
+#!/bin/bash
+#
+# Test status handling test
+#
+# Copyright (c) 2012 Red Hat, Inc. All rights reserved.
+#
+# This copyrighted material is made available to anyone wishing
+# to use, modify, copy, or redistribute it subject to the terms
+# and conditions of the GNU General Public License version 2.
+
+. bt_init.sh
+
+# Verify an exit status assertion
+# Args: status_suffix name
+# Input: test script
+function a()
+{
+    declare -r name="$1"
+    declare -r status_suffix="$2"
+    declare -r status_name="BT_STATUS_${status_suffix^^}"
+
+    bt_assert_begin -s "${!status_name}" "$name"; (
+        . bt_assert_init.sh
+        unset _BT_NAME_STACK
+        {
+            echo ". bt_init.sh"
+            cat
+        } | BT_PROTOCOL=test bash >/dev/null 2>&1 || exit $?
+    ); bt_assert_end
+}
+
+a empty PASSED <<<"
+"
+
+bt_begin setup; (
+    . bt_init.sh
+
+    bt_begin one; (
+        . bt_init.sh
+        a ok      PASSED    <<<"true"
+        a fail    ERRORED   <<<"false"
+    ); bt_end
+
+    bt_begin two; (
+        . bt_init.sh
+        a fail_fail       ERRORED   <<<"false;  false"
+        a fail_ok         ERRORED   <<<"false;  true"
+        a ok_fail         ERRORED   <<<"true;   false"
+        a ok_ok           PASSED    <<<"true;   true"
+    ); bt_end
+); bt_end
+
+bt_begin teardown; (
+    . bt_init.sh
+
+    bt_begin one; (
+        . bt_init.sh
+        a ok      PASSED    <<<"bt_teardown_push true"
+        a fail    PANICED   <<<"bt_teardown_push false"
+    ); bt_end
+
+    bt_begin two; (
+        . bt_init.sh
+        a fail_fail       PANICED   <<<"
+            bt_teardown_push false; bt_teardown_push false"
+        a fail_ok         PANICED   <<<"
+            bt_teardown_push false; bt_teardown_push true"
+        a ok_fail         PANICED   <<<"
+            bt_teardown_push true;  bt_teardown_push false"
+        a ok_ok           PASSED    <<<"
+            bt_teardown_push true;  bt_teardown_push true"
+    ); bt_end
+); bt_end
+
+bt_begin setup_teardown; (
+    . bt_init.sh
+    a ok_ok       PASSED    <<<"true;   bt_teardown_push true"
+    a fail_ok     ERRORED   <<<"false;  bt_teardown_push true"
+    a ok_fail     PANICED   <<<"true;   bt_teardown_push false"
+    a fail_fail   ERRORED   <<<"false;  bt_teardown_push false"
+); bt_end
+
+bt_begin teardown_setup; (
+    . bt_init.sh
+    a ok_ok       PASSED    <<<"bt_teardown_push true;  true"
+    a fail_ok     PANICED   <<<"bt_teardown_push false; true"
+    a ok_fail     ERRORED   <<<"bt_teardown_push true;  false"
+    a fail_fail   PANICED   <<<"bt_teardown_push false; false"
+); bt_end
+
+bt_begin assert; (
+    . bt_init.sh
+
+    bt_begin one; (
+        . bt_init.sh
+        a empty           PASSED    <<<"bt_assert       1"
+        a empty_waived    WAIVED    <<<"bt_assert -w    1"
+        a ok              PASSED    <<<"bt_assert       1 true"
+        a ok_waived       WAIVED    <<<"bt_assert -w    1 true"
+        a failed          FAILED    <<<"bt_assert       1 false"
+        a failed_waived   WAIVED    <<<"bt_assert -w    1 false"
+    ); bt_end
+
+    bt_begin two; (
+        . bt_init.sh
+        a fail_fail       FAILED    <<<"
+            bt_assert       1 false;    bt_assert       2 false"
+        a fail_waive      FAILED    <<<"
+            bt_assert       1 false;    bt_assert -w    2 true"
+        a fail_ok         FAILED    <<<"
+            bt_assert       1 false;    bt_assert       2 true"
+
+        a waive_fail      FAILED    <<<"
+            bt_assert -w    1 true;     bt_assert       2 false"
+        a waive_waive     WAIVED    <<<"
+            bt_assert -w    1 true;     bt_assert -w    2 true"
+        a waive_ok        WAIVED    <<<"
+            bt_assert -w    1 true;     bt_assert -w    2 true"
+
+        a ok_fail         FAILED    <<<"
+            bt_assert       1 true;     bt_assert       2 false"
+        a ok_waive        WAIVED    <<<"
+            bt_assert       1 true;     bt_assert -w    2 true"
+        a ok_ok           PASSED    <<<"
+            bt_assert       1 true;     bt_assert       2 true"
+    ); bt_end
+); bt_end
+
+bt_begin test; (
+    . bt_init.sh
+
+    bt_begin one; (
+        . bt_init.sh
+        bt_begin executable; (
+            . bt_init.sh
+            a empty         PASSED    <<<"bt       1"
+            a empty_waived  WAIVED    <<<"bt -w    1"
+        ); bt_end
+
+        bt_begin inline; (
+            . bt_init.sh
+            a empty         PASSED  <<<"
+                bt_begin 1; ( . bt_init.sh; ); bt_end"
+            a passed        PASSED  <<<"
+                bt_begin 1; ( . bt_init.sh; bt_assert 1 true; ); bt_end"
+            a waived        WAIVED  <<<"
+                bt_begin 1; ( . bt_init.sh; bt_assert -w 1; ); bt_end"
+            a failed        FAILED  <<<"
+                bt_begin 1; ( . bt_init.sh; bt_assert 1 false; ); bt_end"
+            a errored       ERRORED <<<"
+                bt_begin 1; ( . bt_init.sh; false; ); bt_end"
+            a paniced       PANICED <<<"
+                bt_begin 1; ( . bt_init.sh; bt_teardown_push false; ); bt_end"
+            a aborted       ABORTED <<<"
+                bt_begin 1; ( . bt_init.sh; bt_abort; ); bt_end"
+        ); bt_end
+    ); bt_end
+
+); bt_end
