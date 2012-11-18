@@ -16,6 +16,3 @@ bt_abort_assert bt_bool_is_valid "${_BT_WAIVED-false}"
 if ${_BT_WAIVED-false}; then
     exit 0
 fi
-
-# Parse command line arguments
-bt_read_args "$@"

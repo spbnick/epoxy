@@ -20,6 +20,3 @@ bt_abort_assert bt_bool_is_valid "${_BT_WAIVED-false}"
 if ${_BT_WAIVED:-false}; then
     _bt_fini $BT_STATUS_WAIVED
 fi
-
-# Parse command line arguments
-bt_read_args "$@"
