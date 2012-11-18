@@ -46,8 +46,6 @@ function bt_status_to_str()
 {
     declare -r status="$1"
 
-    bt_abort_assert bt_status_is_valid $status
-
     case "$status" in
         $BT_STATUS_PASSED) echo PASSED;;
         $BT_STATUS_WAIVED) echo WAIVED;;
@@ -55,7 +53,7 @@ function bt_status_to_str()
         $BT_STATUS_ERRORED) echo ERRORED;;
         $BT_STATUS_PANICED) echo PANICED;;
         $BT_STATUS_ABORTED) echo ABORTED;;
-        *) bt_abort "Unknown status: $status";;
+        *) bt_abort "Invalid status code: $status";;
     esac
 }
 
