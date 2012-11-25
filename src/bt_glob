@@ -1,0 +1,226 @@
+#!/usr/bin/env lua
+
+---
+-- Exit status
+--
+local status    = {
+    MATCH       = 0,
+    MISMATCH    = 1,
+    ERROR       = 2,
+}
+
+---
+-- Output usage information to a file.
+--
+-- @param file  The file to output to.
+--
+function usage(file)
+    file:write(([[
+Usage: %s [option...] [--] pattern text
+Match a text against a glob-like pattern.
+
+Options:
+    -h, --help      This help message.
+    -p, --prefix    Consider a match the whole text matching the beginning of
+                    the pattern.
+
+]]):format(arg[0]))
+end
+
+---
+-- Parce a brackets expression part of a pattern into a character set.
+--
+-- @param brackets  Pattern part at the beginning of the brackets expression
+--                  contents.
+--
+-- @return Character set,
+--         index of the pattern character after the end of the brackets
+--         expression.
+--
+function parse_brackets(brackets)
+    local stopped_at
+    local range_list = {}
+    local negative = false
+    local start
+    local dash = false
+
+    for i = 1, #brackets, 1 do
+        local c = brackets:sub(i, i)
+        if i == 1 and c == "!" then
+            negative = true
+        elseif (i == 1 or i == 2 and negative) and c == "]" then
+            start = c
+        else
+            if c == "]" then
+                stopped_at = i + 1
+                break
+            end
+            if start == nil then
+                start = c
+            else
+                if not dash and c == "-" then
+                    dash = true
+                else
+                    if dash then
+                        table.insert(range_list, {start, c})
+                        dash = false
+                        start = nil
+                    else
+                        table.insert(range_list, {start, start})
+                        start = c
+                    end
+                end
+            end
+        end
+    end
+
+    if stopped_at == nil then
+        error("Unterminated brackets expression")
+    end
+
+    if start ~= nil then
+        table.insert(range_list, {start, start})
+        if dash then
+            table.insert(range_list, {"-", "-"})
+            dash = false
+        end
+        start = nil
+    end
+
+    return {negative, range_list}, stopped_at
+end
+
+---
+-- Match a character against a character set.
+--
+-- @param set   The character set to match against.
+-- @param c     The character to match.
+--
+-- @return True if matched, false otherwise.
+--
+function match_char_set(set, c)
+    local negative, range_list = unpack(set)
+
+    for _, range in ipairs(range_list) do
+        if c >= range[1] and c <= range[2] then
+            return not negative
+        end
+    end
+
+    return negative
+end
+
+---
+-- Match a text against a pattern.
+--
+-- @param pattern   Pattern to match against.
+-- @param text      Text to match.
+-- @param full      If true, the whole text is required to match the whole
+--                  pattern, otherwise the whole text matching the beginning
+--                  of the pattern is sufficient.
+--
+-- @return True if matched, false otherwise.
+--
+function match(pattern, text, full)
+    local pi = 1
+    local p
+    local ti = 1
+
+    while true do
+        if pi > #pattern then
+            return ti > #text
+        end
+
+        p = pattern:sub(pi, pi)
+
+        if p == "*" then
+            if not full then
+                return true
+            end
+            pattern = pattern:sub(pi + 1)
+            pi = 1
+            for tj = #text + 1, ti, -1 do
+                if match(pattern, text:sub(tj), full) then
+                    return true
+                end
+            end
+            return false
+        end
+
+        if ti > #text then
+            return not full
+        end
+
+        if p == "?" then
+            pi = pi + 1
+        elseif p == "[" then
+            pi = pi + 1
+            local char_set, stopped_at = parse_brackets(pattern:sub(pi))
+            if not match_char_set(char_set, text:sub(ti, ti)) then
+                return false
+            end
+            pi = pi + stopped_at - 1
+        else
+            if p == "\\" then
+                pi = pi + 1
+                if pi > #pattern then
+                    error("Incomplete pattern escape sequence")
+                end
+                p = pattern:sub(pi, pi)
+            end
+
+            if text:sub(ti, ti) ~= p then
+                return false
+            end
+            pi = pi + 1
+        end
+
+        ti = ti + 1
+    end
+end
+
+--
+-- Main routine
+--
+local got_dash_dash = false
+local prefix        = false
+local parameters    = {}
+
+-- Parse command line arguments
+for _, a in ipairs(arg) do
+    if not got_dash_dash and a:sub(1, 1) == "-" then
+        if a == "--" then
+            got_dash_dash = true
+        elseif a == "-h" or a == "--help" then
+            usage(io.stdout)
+            os.exit(0)
+        elseif a == "-p" or a == "--prefix" then
+            prefix = true
+        else
+            io.stderr:write("Unknown option: " .. a .. "\n")
+            usage(io.stderr)
+            os.exit(status.ERROR)
+        end
+    else
+        table.insert(parameters, a)
+    end
+end
+
+if #parameters ~= 2 then
+    io.stderr:write("Invalid number of positional arguments\n")
+    usage(io.stderr)
+    os.exit(status.ERROR)
+end
+
+-- Match
+local ok, matched_or_error  = pcall(match,
+                                    parameters[1], parameters[2],
+                                    not prefix)
+
+-- Report result
+if ok then
+    os.exit(matched_or_error and status.MATCH or status.MISMATCH)
+else
+    io.stderr:write(matched_or_error)
+    os.exit(status.ERROR)
+end
