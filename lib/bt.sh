@@ -21,6 +21,8 @@ declare -x BT_PROTOCOL
 # Assert name stack
 declare -x _BT_NAME_STACK
 
+# Skipped assert counter
+declare -i _BT_COUNT_SKIPPED
 # Passed assert counter
 declare -i _BT_COUNT_PASSED
 # Waived assert counter
@@ -53,6 +55,7 @@ function _bt_init()
 
     _BT_PROTOCOL="${BT_PROTOCOL:-generic}"
     _BT_NAME_STACK="${_BT_NAME_STACK:-}"
+    _BT_COUNT_SKIPPED=0
     _BT_COUNT_PASSED=0
     _BT_COUNT_WAIVED=0
     _BT_COUNT_FAILED=0
@@ -141,30 +144,36 @@ function _bt_register_status()
 # Args: [option...] [--] name
 #
 # Options:
-#   -w, --waived        Waive the assertion.
-#   -s, --status=STATUS Expect STATUS exit status. Default is 0.
+#   -s, --skipped                   Mark assertion as skipped.
+#   -w, --waived                    Mark assertion as waived.
+#   -e, --expected-status=STATUS    Expect STATUS exit status. Default is 0.
 #
 function bt_assert_begin()
 {
+    declare skipped=false
     declare waived=false
     declare expected_status=0
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +s:w \
-                         --longoptions status:,waived \
+                         --options +swe: \
+                         --longoptions skipped,waived,expected-status: \
                          -- "$@"`
     eval set -- "$args"
 
     while true; do
         case "$1" in
+            -s|--skipped)
+                skipped=true
+                shift
+                ;;
             -w|--waived)
                 waived=true
                 shift
                 ;;
-            -s|--status)
+            -e|--expected-status)
                 expected_status="$2";
                 if [[ "$expected_status" == "" ||
                       "$expected_status" == *[^" "0-9]* ]]; then
-                    bt_abort "Invalid -s/--status option value"
+                    bt_abort "Invalid -e/--expected-status option value"
                 fi
                 shift 2
                 ;;
@@ -184,12 +193,16 @@ function bt_assert_begin()
     declare -r name="$1"
     shift
 
-    # Remember expected status - to be compared to the command exit status
-    declare -g _BT_EXPECTED_STATUS="$expected_status"
+    # Export "skipped" flag, so if the command is skipped it could exit
+    # immediately
+    declare -g -x _BT_SKIPPED="$skipped"
 
     # Export "waived" flag, so if the command is waived it could exit
     # immediately
     declare -g -x _BT_WAIVED="$waived"
+
+    # Remember expected status - to be compared to the command exit status
+    declare -g _BT_EXPECTED_STATUS="$expected_status"
 
     # "Enter" the assertion
     bt_strstack_push _BT_NAME_STACK / "$name"
@@ -222,6 +235,12 @@ function bt_assert_end()
     fi
     unset _BT_WAIVED
 
+    bt_abort_assert [ ${_BT_SKIPPED+set} ]
+    if $_BT_SKIPPED; then
+        status=$BT_STATUS_SKIPPED
+    fi
+    unset _BT_SKIPPED
+
     bt_abort_assert bt_status_is_valid $status
     _bt_log_status "$name" $status
     _bt_register_status $status
@@ -235,31 +254,37 @@ function bt_assert_end()
 # Args: [option...] [--] name [command [arg...]]
 #
 # Options:
-#   -w, --waived        Waive the assertion.
-#   -s, --status=STATUS Expect STATUS exit status. Default is 0.
+#   -s, --skipped                   Mark assertion as skipped.
+#   -w, --waived                    Mark assertion as waived.
+#   -e, --expected-status=STATUS    Expect STATUS exit status. Default is 0.
 #
 function bt_assert()
 {
+    declare skipped=false
     declare waived=false
     declare expected_status=0
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +s:w \
-                         --longoptions status:,waived \
+                         --options +swe: \
+                         --longoptions skipped,waived,expected-status: \
                          -- "$@"`
     declare -a begin_args=()
     eval set -- "$args"
 
     while true; do
         case "$1" in
+            -s|--skipped)
+                skipped=true
+                shift
+                ;;
             -w|--waived)
                 waived=true
                 shift
                 ;;
-            -s|--status)
+            -e|--expected-status)
                 expected_status="$2";
                 if [[ "$expected_status" == "" ||
                       "$expected_status" == *[^" "0-9]* ]]; then
-                    bt_abort "Invalid -s/--status option value"
+                    bt_abort "Invalid -e/--expected-status option value"
                 fi
                 shift 2
                 ;;
@@ -279,12 +304,16 @@ function bt_assert()
     declare -r name="$1"
     shift
 
+    if $skipped; then
+        begin_args[${#begin_args[@]}]="--skipped"
+    fi
+
     if $waived; then
         begin_args[${#begin_args[@]}]="--waived"
     fi
 
     if [ "$expected_status" != 0 ]; then
-        begin_args[${#begin_args[@]}]="--status"
+        begin_args[${#begin_args[@]}]="--expected-status"
         begin_args[${#begin_args[@]}]="$expected_status"
     fi
 
@@ -303,19 +332,25 @@ function bt_assert()
 # Args: [option...] [--] name
 #
 # Options:
-#   -w, --waived        Waive the assertion.
+#   -s, --skipped                   Mark assertion as skipped.
+#   -w, --waived                    Mark assertion as waived.
 #
 function bt_begin()
 {
+    declare skipped=false
     declare waived=false
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +w \
-                         --longoptions waived \
+                         --options +sw \
+                         --longoptions skipped,waived \
                          -- "$@"`
     eval set -- "$args"
 
     while true; do
         case "$1" in
+            -s|--skipped)
+                skipped=true
+                shift
+                ;;
             -w|--waived)
                 waived=true
                 shift
@@ -335,6 +370,10 @@ function bt_begin()
     fi
     declare -r name="$1"
     shift
+
+    # Export "skipped" flag, so if the command is skipped it could exit
+    # immediately
+    declare -g -x _BT_SKIPPED="$skipped"
 
     # Export "waived" flag, so if the command is waived it could exit
     # immediately
@@ -364,6 +403,12 @@ function bt_end()
     fi
     unset _BT_WAIVED
 
+    bt_abort_assert [ ${_BT_SKIPPED+set} ]
+    if $_BT_SKIPPED; then
+        status=$BT_STATUS_SKIPPED
+    fi
+    unset _BT_SKIPPED
+
     bt_abort_assert bt_status_is_valid $status
     _bt_log_status "$name" $status
     _bt_register_status $status
@@ -377,21 +422,27 @@ function bt_end()
 # Args: [option...] [--] name [command [arg...]]
 #
 # Options:
-#   -w, --waived        Waive the assertion.
+#   -s, --skipped                   Mark assertion as skipped.
+#   -w, --waived                    Mark assertion as waived.
 #
 function bt()
 {
+    declare skipped=false
     declare waived=false
     declare -a opts=()
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +w \
-                         --longoptions waived \
+                         --options +sw \
+                         --longoptions skipped,waived \
                          -- "$@"`
     declare -a begin_args=()
     eval set -- "$args"
 
     while true; do
         case "$1" in
+            -s|--skipped)
+                skipped=true
+                shift
+                ;;
             -w|--waived)
                 waived=true
                 shift
@@ -411,6 +462,10 @@ function bt()
     fi
     declare -r name="$1"
     shift
+
+    if $skipped; then
+        begin_args[${#begin_args[@]}]="--skipped"
+    fi
 
     if $waived; then
         begin_args[${#begin_args[@]}]="--waived"
@@ -495,6 +550,12 @@ function _bt_trap_exit()
     # else, if there were waived tests
     elif [ $_BT_COUNT_WAIVED != 0 ]; then
         status=$BT_STATUS_WAIVED
+    # else, if there were passed tests
+    elif [ $_BT_COUNT_PASSED != 0 ]; then
+        status=$BT_STATUS_PASSED
+    # else, if there were skipped tests
+    elif [ $_BT_COUNT_SKIPPED != 0 ]; then
+        status=$BT_STATUS_SKIPPED
     else
         status=$BT_STATUS_PASSED
     fi

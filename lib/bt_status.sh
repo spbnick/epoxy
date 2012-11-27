@@ -15,18 +15,20 @@ declare -r _BT_STATUS_SH=
 #
 # Status codes
 #
+# Skipped
+declare -r -i BT_STATUS_SKIPPED=1
 # Passed
-declare -r -i BT_STATUS_PASSED=1
-# Waived (not executed)
-declare -r -i BT_STATUS_WAIVED=2
+declare -r -i BT_STATUS_PASSED=2
+# Waived
+declare -r -i BT_STATUS_WAIVED=3
 # Failed
-declare -r -i BT_STATUS_FAILED=3
+declare -r -i BT_STATUS_FAILED=4
 # A setup error occurred
-declare -r -i BT_STATUS_ERRORED=4
+declare -r -i BT_STATUS_ERRORED=5
 # A cleanup error occurred
-declare -r -i BT_STATUS_PANICKED=5
+declare -r -i BT_STATUS_PANICKED=6
 # A coding error occurred
-declare -r -i BT_STATUS_ABORTED=6
+declare -r -i BT_STATUS_ABORTED=7
 
 # Check if a status code is valid
 # Args: status
@@ -35,7 +37,7 @@ function bt_status_is_valid()
     declare -r status="$1"
     [[ "$status" != "" &&
        "$status" != [^0-9] && \
-       "$status" -ge $BT_STATUS_PASSED && \
+       "$status" -ge $BT_STATUS_SKIPPED && \
        "$status" -le $BT_STATUS_ABORTED ]]
 }
 
@@ -47,6 +49,7 @@ function bt_status_to_str()
     declare -r status="$1"
 
     case "$status" in
+        $BT_STATUS_SKIPPED) echo SKIPPED;;
         $BT_STATUS_PASSED) echo PASSED;;
         $BT_STATUS_WAIVED) echo WAIVED;;
         $BT_STATUS_FAILED) echo FAILED;;

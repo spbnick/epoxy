@@ -19,13 +19,13 @@ function a()
     declare -r status_suffix="$2"
     declare -r status_name="BT_STATUS_${status_suffix^^}"
 
-    bt_assert_begin -s "${!status_name}" "$name"; (
+    bt_assert_begin -e "${!status_name}" "$name"; (
         . bt_assert_init.sh
         unset _BT_NAME_STACK
         {
             echo ". bt_init.sh"
             cat
-        } | BT_PROTOCOL=test bash >/dev/null 2>&1 || exit $?
+        } | BT_PROTOCOL=test bash >/dev/null || exit $?
     ); bt_assert_end
 }
 
@@ -91,14 +91,35 @@ bt_begin teardown_setup; (
 bt_begin assert; (
     . bt_init.sh
 
+    a no_args   ABORTED <<<"bt_assert" 2>/dev/null
+
+    bt_begin options; (
+        . bt_init.sh
+        a none                  PASSED  <<<"bt_assert               1"
+        a w                     WAIVED  <<<"bt_assert -w            1"
+        a waived                WAIVED  <<<"bt_assert --waived      1"
+        a s                     SKIPPED <<<"bt_assert -s            1"
+        a skipped               SKIPPED <<<"bt_assert --skipped     1"
+        a e0                    PASSED  <<<"bt_assert -e0           1   true"
+        a e1                    PASSED  <<<"bt_assert -e1           1   false"
+        a expected_eq_0         PASSED  <<<"bt_assert --expected=0  1   true"
+        a expected_eq_1         PASSED  <<<"bt_assert --expected=1  1   false"
+    ); bt_end
+
     bt_begin one; (
         . bt_init.sh
-        a empty           PASSED    <<<"bt_assert       1"
-        a empty_waived    WAIVED    <<<"bt_assert -w    1"
-        a ok              PASSED    <<<"bt_assert       1 true"
-        a ok_waived       WAIVED    <<<"bt_assert -w    1 true"
-        a failed          FAILED    <<<"bt_assert       1 false"
-        a failed_waived   WAIVED    <<<"bt_assert -w    1 false"
+        a empty                 PASSED  <<<"bt_assert       1"
+        a empty_waived          WAIVED  <<<"bt_assert -w    1"
+        a empty_skipped         SKIPPED <<<"bt_assert -s    1"
+        a empty_waived_skipped  SKIPPED <<<"bt_assert -w -s 1"
+        a ok                    PASSED  <<<"bt_assert       1 true"
+        a ok_waived             WAIVED  <<<"bt_assert -w    1 true"
+        a ok_skipped            SKIPPED <<<"bt_assert -s    1 true"
+        a ok_waived_skipped     SKIPPED <<<"bt_assert -w -s 1 true"
+        a failed                FAILED  <<<"bt_assert       1 false"
+        a failed_waived         WAIVED  <<<"bt_assert -w    1 false"
+        a failed_waived_skipped SKIPPED <<<"bt_assert -w -s 1 false"
+        a failed_skipped        SKIPPED <<<"bt_assert -s    1 false"
     ); bt_end
 
     bt_begin two; (
