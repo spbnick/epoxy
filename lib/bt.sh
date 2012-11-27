@@ -124,8 +124,7 @@ function _bt_log_status()
 {
     declare -r name="$1"
     declare -r status="$2"
-    bt_abort_assert bt_status_is_valid "$status"
-    echo "${name:+$name }`bt_status_to_str $status`" >&2
+    echo "${name:+$name }`bt_status_to_str \"\$status\"`"
 }
 
 # Register test status
@@ -133,10 +132,9 @@ function _bt_log_status()
 function _bt_register_status()
 {
     declare -r status="$1"
-    bt_abort_assert bt_status_is_valid "$status"
-    declare -r status_str=`bt_status_to_str $status`
+    declare -r status_str=`bt_status_to_str "\$status"`
     declare -r count_var="_BT_COUNT_$status_str"
-    eval "$count_var=$count_var+1"
+    eval "$count_var=$((count_var+1))"
 }
 
 # Setup a command assertion.
