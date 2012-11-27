@@ -14,7 +14,13 @@
 # Initialize the test
 _bt_init
 
+bt_abort_assert bt_bool_is_valid "${_BT_SKIPPED-false}"
 bt_abort_assert bt_bool_is_valid "${_BT_WAIVED-false}"
+
+# If entering a skipped test
+if ${_BT_SKIPPED:-false}; then
+    _bt_fini $BT_STATUS_SKIPPED
+fi
 
 # If entering a waived test
 if ${_BT_WAIVED:-false}; then

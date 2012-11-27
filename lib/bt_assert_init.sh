@@ -10,7 +10,13 @@
 . bt_shell_init.sh
 . bt_util.sh
 
+bt_abort_assert bt_bool_is_valid "${_BT_SKIPPED-false}"
 bt_abort_assert bt_bool_is_valid "${_BT_WAIVED-false}"
+
+# If entering a skipped script
+if ${_BT_SKIPPED:-false}; then
+    exit 0
+fi
 
 # If entering a waived script
 if ${_BT_WAIVED-false}; then
