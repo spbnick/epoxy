@@ -40,7 +40,7 @@ function bt_backtrace()
 # Args: [message...]
 function bt_abort()
 {
-    if [ $# > 0 ]; then
+    if [ $# != 0 ]; then
         echo "$@" >&2
     fi
     kill -s SIGABRT $BASHPID
