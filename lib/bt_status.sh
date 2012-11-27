@@ -24,7 +24,7 @@ declare -r -i BT_STATUS_FAILED=3
 # A setup error occurred
 declare -r -i BT_STATUS_ERRORED=4
 # A cleanup error occurred
-declare -r -i BT_STATUS_PANICED=5
+declare -r -i BT_STATUS_PANICKED=5
 # A coding error occurred
 declare -r -i BT_STATUS_ABORTED=6
 
@@ -51,7 +51,7 @@ function bt_status_to_str()
         $BT_STATUS_WAIVED) echo WAIVED;;
         $BT_STATUS_FAILED) echo FAILED;;
         $BT_STATUS_ERRORED) echo ERRORED;;
-        $BT_STATUS_PANICED) echo PANICED;;
+        $BT_STATUS_PANICKED) echo PANICKED;;
         $BT_STATUS_ABORTED) echo ABORTED;;
         *) bt_abort "Invalid status code: $status";;
     esac

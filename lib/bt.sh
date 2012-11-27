@@ -29,8 +29,8 @@ declare -i _BT_COUNT_WAIVED
 declare -i _BT_COUNT_FAILED
 # Errored assert counter
 declare -i _BT_COUNT_ERRORED
-# Paniced assert counter
-declare -i _BT_COUNT_PANICED
+# Panicked assert counter
+declare -i _BT_COUNT_PANICKED
 # Aborted assert counter
 declare -i _BT_COUNT_ABORTED
 
@@ -57,7 +57,7 @@ function _bt_init()
     _BT_COUNT_WAIVED=0
     _BT_COUNT_FAILED=0
     _BT_COUNT_ERRORED=0
-    _BT_COUNT_PANICED=0
+    _BT_COUNT_PANICKED=0
     _BT_COUNT_ABORTED=0
     _BT_TEARDOWN_ARGC=()
     _BT_TEARDOWN_ARGV=()
@@ -93,7 +93,7 @@ function _bt_fini()
     fi
 }
 
-# Exit the test immediately with PANICED status, skipping (the rest of)
+# Exit the test immediately with PANICKED status, skipping (the rest of)
 # teardown, optionally outputting a message to stderr.
 # Args: [message...]
 function bt_panic()
@@ -101,7 +101,7 @@ function bt_panic()
     if [ $# != 0 ]; then
         echo "$@" >&2
     fi
-    _bt_fini $BT_STATUS_PANICED
+    _bt_fini $BT_STATUS_PANICKED
 }
 
 # Exit the test with ERRORED status, optionally outputting a message to
@@ -225,7 +225,7 @@ function bt_assert_end()
     bt_abort_assert bt_status_is_valid $status
     _bt_log_status "$name" $status
     _bt_register_status $status
-    if [ $status -ge $BT_STATUS_PANICED ]; then
+    if [ $status -ge $BT_STATUS_PANICKED ]; then
         _bt_fini $status
     fi
 }
@@ -367,7 +367,7 @@ function bt_end()
     bt_abort_assert bt_status_is_valid $status
     _bt_log_status "$name" $status
     _bt_register_status $status
-    if [ $status -ge $BT_STATUS_PANICED ]; then
+    if [ $status -ge $BT_STATUS_PANICKED ]; then
         _bt_fini $status
     fi
 }
@@ -485,7 +485,7 @@ function _bt_trap_exit()
 
     # If teardown failed
     if [ $teardown_status != 0 ]; then
-        status=$BT_STATUS_PANICED
+        status=$BT_STATUS_PANICKED
     # else, if exiting with failure
     elif [ $status != 0 ]; then
         status=$BT_STATUS_ERRORED

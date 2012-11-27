@@ -56,16 +56,16 @@ bt_begin teardown; (
     bt_begin one; (
         . bt_init.sh
         a ok      PASSED    <<<"bt_teardown_push true"
-        a fail    PANICED   <<<"bt_teardown_push false"
+        a fail    PANICKED  <<<"bt_teardown_push false"
     ); bt_end
 
     bt_begin two; (
         . bt_init.sh
-        a fail_fail       PANICED   <<<"
+        a fail_fail       PANICKED  <<<"
             bt_teardown_push false; bt_teardown_push false"
-        a fail_ok         PANICED   <<<"
+        a fail_ok         PANICKED  <<<"
             bt_teardown_push false; bt_teardown_push true"
-        a ok_fail         PANICED   <<<"
+        a ok_fail         PANICKED  <<<"
             bt_teardown_push true;  bt_teardown_push false"
         a ok_ok           PASSED    <<<"
             bt_teardown_push true;  bt_teardown_push true"
@@ -76,16 +76,16 @@ bt_begin setup_teardown; (
     . bt_init.sh
     a ok_ok       PASSED    <<<"true;   bt_teardown_push true"
     a fail_ok     ERRORED   <<<"false;  bt_teardown_push true"
-    a ok_fail     PANICED   <<<"true;   bt_teardown_push false"
+    a ok_fail     PANICKED  <<<"true;   bt_teardown_push false"
     a fail_fail   ERRORED   <<<"false;  bt_teardown_push false"
 ); bt_end
 
 bt_begin teardown_setup; (
     . bt_init.sh
     a ok_ok       PASSED    <<<"bt_teardown_push true;  true"
-    a fail_ok     PANICED   <<<"bt_teardown_push false; true"
+    a fail_ok     PANICKED  <<<"bt_teardown_push false; true"
     a ok_fail     ERRORED   <<<"bt_teardown_push true;  false"
-    a fail_fail   PANICED   <<<"bt_teardown_push false; false"
+    a fail_fail   PANICKED  <<<"bt_teardown_push false; false"
 ); bt_end
 
 bt_begin assert; (
@@ -139,19 +139,19 @@ bt_begin test; (
 
         bt_begin inline; (
             . bt_init.sh
-            a empty         PASSED  <<<"
+            a empty         PASSED      <<<"
                 bt_begin 1; ( . bt_init.sh; ); bt_end"
-            a passed        PASSED  <<<"
+            a passed        PASSED      <<<"
                 bt_begin 1; ( . bt_init.sh; bt_assert 1 true; ); bt_end"
-            a waived        WAIVED  <<<"
+            a waived        WAIVED      <<<"
                 bt_begin 1; ( . bt_init.sh; bt_assert -w 1; ); bt_end"
-            a failed        FAILED  <<<"
+            a failed        FAILED      <<<"
                 bt_begin 1; ( . bt_init.sh; bt_assert 1 false; ); bt_end"
-            a errored       ERRORED <<<"
+            a errored       ERRORED     <<<"
                 bt_begin 1; ( . bt_init.sh; false; ); bt_end"
-            a paniced       PANICED <<<"
+            a paniced       PANICKED    <<<"
                 bt_begin 1; ( . bt_init.sh; bt_teardown_push false; ); bt_end"
-            a aborted       ABORTED <<<"
+            a aborted       ABORTED     <<<"
                 bt_begin 1; ( . bt_init.sh; bt_abort; ); bt_end"
         ); bt_end
     ); bt_end
