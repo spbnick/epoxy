@@ -171,7 +171,7 @@ function bt_assert_begin()
                 expected_status="$2";
                 if [[ "$expected_status" == "" ||
                       "$expected_status" == *[^" "0-9]* ]]; then
-                    bt_abort "Invalid -e/--expected-status option value"
+                    bt_abort "Invalid -e/--expected-status option value: $2"
                 fi
                 shift 2
                 ;;
@@ -282,7 +282,7 @@ function bt_assert()
                 expected_status="$2";
                 if [[ "$expected_status" == "" ||
                       "$expected_status" == *[^" "0-9]* ]]; then
-                    bt_abort "Invalid -e/--expected-status option value"
+                    bt_abort "Invalid -e/--expected-status option value: $2"
                 fi
                 shift 2
                 ;;
