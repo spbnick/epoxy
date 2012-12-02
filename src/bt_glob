@@ -91,6 +91,62 @@ function parse_brackets(brackets)
 end
 
 ---
+-- Parce a pattern set parentheses expression part of a pattern into a
+-- pattern set.
+--
+-- @param parens    Pattern part at the beginning of the parentheses
+--                  expression contents.
+--
+-- @return Pattern set,
+--         index of the pattern character after the end of the parentheses
+--         expression.
+--
+function parse_parens(parens)
+    local set   = {}
+    local chars = {}
+    local depth = 0
+    local i     = 1
+    local c
+
+    while i <= #parens do
+        c = parens:sub(i, i)
+        if c == "|" and depth == 0 then
+            table.insert(set, table.concat(chars))
+            chars = {}
+        else
+            if c == "(" then
+                depth = depth + 1
+            elseif c == ")" then
+                if depth == 0 then
+                    table.insert(set, table.concat(chars))
+                    --[[
+                    io.stderr:write("parsed parens:")
+                    for _, p in ipairs(set) do
+                        io.stderr:write(' "', p, '"')
+                    end
+                    io.stderr:write("\n")
+                    --]]
+                    return set, i + 1
+                else
+                    depth = depth - 1
+                end
+            elseif c == "\\" then
+                table.insert(chars, c)
+                i = i + 1
+                if i > #parens then
+                    error("Incomplete pattern escape sequence")
+                end
+                c = parens:sub(i, i)
+            end
+            table.insert(chars, c)
+        end
+        i = i + 1
+    end
+
+    error("Unterminated parentheses expression")
+end
+
+---
 -- Match a character against a character set.
 --
 -- @param set   The character set to match against.
@@ -111,55 +167,256 @@ function match_char_set(set, c)
 end
 
 ---
+-- Match a text against a pattern set, selecting longest match.
+--
+-- @param set       Pattern set to match against.
+-- @param text      Text to match.
+--
+-- @return Maximum full pattern match text stop index or nil,
+--         maximum partial pattern match text stop index or nil.
+--
+function match_pattern_set(set, text)
+    local max_full_ts
+    local max_part_ts
+    local ps
+    local ts
+
+    --[[
+    local sig = "match_pattern_set({"
+    for _, p in ipairs(set) do
+        sig = sig .. ' "' .. p .. '"'
+    end
+    sig = sig .. '}, "' .. text .. '")'
+    io.stderr:write(sig, ">\n")
+    --]]
+
+    for _, p in ipairs(set) do
+        ps, ts = match(p, text)
+        if ps > #p then
+            if max_full_ts == nil or ts > max_full_ts then
+                max_full_ts = ts
+            end
+        else
+            if max_part_ts == nil or ts > max_part_ts then
+                max_part_ts = ts
+            end
+        end
+    end
+
+    --[[
+    io.stderr:write(sig, "< ", tostring(max_full_ts), ", ",
+                    tostring(max_part_ts), "\n")
+    --]]
+    return max_full_ts, max_part_ts
+end
+
+---
+-- Match an operation of a pattern set.
+--
+-- @param op    Operator character: "?", "*", "+", "@", or "!", according to
+--              extglob description in bash(1).
+-- @param set   Pattern set to match against.
+-- @param text  Text to match.
+--
+-- @return Maximum full pattern match text stop index or nil,
+--         maximum partial pattern match text stop index or nil.
+--
+function match_operated_pattern_set(op, set, text)
+    local full_ts
+    local part_ts
+
+    --[[
+    local sig = "match_operated_pattern_set(" .. op .. ", {"
+    for _, p in ipairs(set) do
+        sig = sig .. ' "' .. p .. '"'
+    end
+    sig = sig .. '}, "' .. text .. '")'
+    io.stderr:write(sig, ">\n")
+    --]]
+
+    if op == "@" then
+        full_ts, part_ts = match_pattern_set(set, text)
+    elseif op == "!" then
+        full_ts, part_ts = match_pattern_set(set, text)
+        if full_ts == nil or full_ts <= #text then
+            full_ts = #text + 1
+            part_ts = nil
+        else
+            full_ts = nil
+            part_ts = nil
+        end
+    elseif op == "?" then
+        if #text == 0 then
+            full_ts, part_ts = #text + 1, nil
+        else
+            full_ts, part_ts = match_pattern_set(set, text)
+        end
+    elseif op == "*" or op == "+" then
+        if #text == 0 and op == "*" then
+            full_ts, part_ts = #text + 1, nil
+        else
+            local ti = 1
+            while ti <= #text + 1 do
+                local set_full_ts, set_part_ts =
+                        match_pattern_set(set, text:sub(ti))
+                if set_full_ts ~= nil then
+                    ti = ti + set_full_ts - 1
+                    full_ts = ti
+                    if set_full_ts == 1 then
+                        break
+                    end
+                else
+                    if set_part_ts ~= nil then
+                        part_ts = ti + set_part_ts - 1
+                    end
+                    break
+                end
+            end
+        end
+    end
+
+    --[[
+    io.stderr:write(sig, "< ", tostring(full_ts), ", ",
+                    tostring(part_ts), "\n")
+    --]]
+    return full_ts, part_ts
+end
+
+---
+-- Greedy matching function interface.
+--
+-- @param text  Text to match.
+--
+-- @return Maximum full pattern match text stop index or nil,
+--         maximum partial pattern match text stop index or nil.
+--
+
+---
+-- Match a text first with a greedy matching function, then with the rest of
+-- the pattern.
+--
+-- @param func      The greedy matching function.
+-- @param func_pi   Index of the first character of the pattern expression
+--                  used to produce the greedy matching function.
+-- @param func_ti   Index of the first text character to match with the greedy
+--                  function.
+-- @param match_pi  Index of the first character of the rest of the pattern to
+--                  match.
+-- @param pattern   Pattern to match.
+-- @param text      Text to match.
+--
+-- @return Pattern match stop index, text match stop index.
+--
+function match_greedy(func, func_pi, func_ti, match_pi, pattern, text)
+    local match_ti
+    local max_part_ts       = func_ti
+    local max_part_ts_ps    = func_pi
+
+    --[[
+    local sig=('match_greedy(%s, %d, %d, %d, %q, %q)'):
+                format(tostring(func), func_pi, func_ti, match_pi,
+                       pattern, text)
+    io.stderr:write(sig, ">\n")
+    --]]
+
+    match_ti = #text + 1
+    while match_ti >= func_ti do
+        local full_ts, part_ts = func(text:sub(func_ti, match_ti - 1))
+
+        if part_ts ~= nil and part_ts > max_part_ts then
+            max_part_ts = func_ti + part_ts - 1
+            max_part_ts_ps = func_pi
+        end
+        if full_ts ~= nil then
+            match_ti = func_ti + full_ts - 1
+            match_ps, match_ts = match(pattern:sub(match_pi), text:sub(match_ti))
+            match_ps = match_pi + match_ps - 1
+            match_ts = match_ti + match_ts - 1
+            if match_ps > #pattern and match_ts > #text then
+                --[[
+                io.stderr:write(sig, "< ", tostring(match_ps), ", ",
+                                tostring(match_ts), "\n")
+                --]]
+                return match_ps, match_ts
+            else
+                if match_ts > max_part_ts then
+                    max_part_ts = match_ts
+                    max_part_ts_ps = match_ps
+                end
+            end
+        end
+        match_ti = match_ti - 1
+    end
+
+    --[[
+    io.stderr:write(sig, "< ", tostring(max_part_ts_ps), ", ",
+                    tostring(max_part_ts), "\n")
+    --]]
+    return max_part_ts_ps, max_part_ts
+end
+
+---
 -- Match a text against a pattern.
 --
 -- @param pattern   Pattern to match against.
 -- @param text      Text to match.
--- @param full      If true, the whole text is required to match the whole
---                  pattern, otherwise the whole text matching the beginning
---                  of the pattern is sufficient.
 --
--- @return True if matched, false otherwise.
+-- @return Pattern match stop index, text match stop index.
 --
-function match(pattern, text, full)
+function match(pattern, text)
     local pi = 1
+    local ps
     local p
     local ti = 1
 
+    --[[
+    local sig = ('match(%q, %q)'):format(pattern, text)
+    io.stderr:write(sig, ">\n")
+    --]]
+
     while true do
         if pi > #pattern then
-            return ti > #text
+            break
         end
 
         p = pattern:sub(pi, pi)
 
+        -- If it's an extended matching operator
+        if pattern:sub(pi, pi + 1):match("^[?*+@!]%($") then
+            local pattern_set
+            pattern_set, ps = parse_parens(pattern:sub(pi + 2))
+            pi, ti =
+                match_greedy(
+                    function (text)
+                        return match_operated_pattern_set(p, pattern_set,
+                                                          text)
+                    end,
+                    pi, ti, pi + 2 + ps - 1, pattern, text)
+            break
+        end
+
         if p == "*" then
-            if not full then
-                return true
-            end
-            pattern = pattern:sub(pi + 1)
-            pi = 1
-            for tj = #text + 1, ti, -1 do
-                if match(pattern, text:sub(tj), full) then
-                    return true
-                end
-            end
-            return false
+            pi, ti =
+                match_greedy(
+                    function (text) return true, #text + 1 end,
+                    pi, ti, pi + 1, pattern, text)
+            break
         end
 
         if ti > #text then
-            return not full
+            break
         end
 
         if p == "?" then
             pi = pi + 1
         elseif p == "[" then
-            pi = pi + 1
-            local char_set, stopped_at = parse_brackets(pattern:sub(pi))
+            local char_set
+            char_set, ps = parse_brackets(pattern:sub(pi + 1))
             if not match_char_set(char_set, text:sub(ti, ti)) then
-                return false
+                break
             end
-            pi = pi + stopped_at - 1
+            pi = pi + 1
+            pi = pi + ps - 1
         else
             if p == "\\" then
                 pi = pi + 1
@@ -170,13 +427,18 @@ function match(pattern, text, full)
             end
 
             if text:sub(ti, ti) ~= p then
-                return false
+                break
             end
             pi = pi + 1
         end
 
         ti = ti + 1
     end
+
+    --[[
+    io.stderr:write(sig, "< ", tostring(pi), ", ", tostring(ti), "\n")
+    --]]
+    return pi, ti
 end
 
 --
@@ -212,15 +474,19 @@ if #parameters ~= 2 then
     os.exit(status.ERROR)
 end
 
+local pattern, text = unpack(parameters)
+
 -- Match
-local ok, matched_or_error  = pcall(match,
-                                    parameters[1], parameters[2],
-                                    not prefix)
+local ok, ps_or_error, ts =
+        pcall(match, pattern, text)
 
 -- Report result
 if ok then
-    os.exit(matched_or_error and status.MATCH or status.MISMATCH)
+    local ps = ps_or_error
+    local matched = ts > #text and (prefix or ps > #pattern)
+    os.exit(matched and status.MATCH or status.MISMATCH)
 else
-    io.stderr:write(matched_or_error)
+    local error = matched_or_error
+    io.stderr:write(error, "\n")
     os.exit(status.ERROR)
 end

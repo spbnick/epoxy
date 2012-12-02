@@ -1,0 +1,220 @@
+#!/bin/bash
+#
+# Test status handling test
+#
+# Copyright (c) 2012 Red Hat, Inc. All rights reserved.
+#
+# This copyrighted material is made available to anyone wishing
+# to use, modify, copy, or redistribute it subject to the terms
+# and conditions of the GNU General Public License version 2.
+
+. bt_init.sh
+
+function assert_glob()
+{
+    declare -r name="$1"
+    declare -r pattern="$2"
+    declare -r text="$3"
+    declare -r status="$4"
+    bt_assert -e "$status" -- "$name" bt_glob -- "$pattern" "$text"
+}
+
+function assert_both()
+{
+    declare -r name="$1"
+    declare -r pattern="$2"
+    declare -r text="$3"
+    declare -r full_status="$4"
+    declare -r prfx_status="$5"
+    bt_begin -- "$name"; (
+        . bt_init.sh
+        if [ -n "$full_status" ]; then
+            bt_assert -e "$full_status" "full" bt_glob    -- "$pattern" "$text"
+        fi
+        if [ -n "$prfx_status" ]; then
+            bt_assert -e "$prfx_status" "prfx" bt_glob -p -- "$pattern" "$text"
+        fi
+    ); bt_end
+}
+
+bt_begin no_args; (
+    . bt_init.sh
+    bt_assert -e 2 status eval "bt_glob >/dev/null 2>&1"
+    bt_assert -e 2 stdout \
+                    eval "bt_glob 2>/dev/null | { ! grep -q .; }"
+    bt_assert -e 2 stderr \
+                    eval "bt_glob 2>&1 >/dev/null | grep -q ^Usage:"
+); bt_end
+
+bt_begin options; (
+    . bt_init.sh
+    bt_begin none; (
+        . bt_init.sh
+        bt_assert -e 0  match       bt_glob a   a
+        bt_assert -e 1  mismatch    bt_glob a   b
+    ); bt_end
+    bt_begin termination; (
+        . bt_init.sh
+        bt_assert -e 1 before_args  bt_glob -- --help ------
+        bt_assert -e 1 between_args bt_glob help -- --help
+        bt_assert -e 2 after_args \
+                        eval "bt_glob help help -- --help 2>/dev/null"
+    ); bt_end
+    for o in -h --help; do
+        bt_begin -- $o; (
+            . bt_init.sh
+            # check that stdout contains "Usage:"
+            bt_assert status eval "bt_glob $o >/dev/null 2>&1"
+            bt_assert stdout \
+                        eval "bt_glob $o 2>/dev/null | grep -q ^Usage:"
+            bt_assert stderr \
+                        eval "bt_glob $o 2>&1 >/dev/null | { ! grep -q .; }"
+        ); bt_end
+    done
+    for o in -p --prefix; do
+        bt_begin -- $o; (
+            . bt_init.sh
+            bt_assert -e 0  match     bt_glob $o ab   a
+            bt_assert -e 1  mismatch  bt_glob $o a    ab
+        ); bt_end
+    done
+); bt_end
+
+bt_begin literal; (
+    . bt_init.sh
+    assert_both empty   "" "" 0 0
+
+    bt_begin one_char; (
+        . bt_init.sh
+        assert_both equal       "a" "a" 0 0
+        assert_both nonequal    "a" "b" 1 1
+    ); bt_end
+
+    bt_begin one_char_and_empty; (
+        . bt_init.sh
+        assert_both empty_text      "a" ""  1 0
+        assert_both empty_pattern   ""  "a" 1 1
+    ); bt_end
+
+    bt_begin two_chars; (
+        . bt_init.sh
+        assert_both match           "ab" "ab" 0 0
+        assert_both mismatch_first  "cb" "ab" 1 1
+        assert_both mismatch_last   "ac" "ab" 1 1
+    ); bt_end
+
+    bt_begin two_and_one_chars; (
+        . bt_init.sh
+        bt_begin short_pattern; (
+            . bt_init.sh
+            assert_both first   "a" "ab" 1 1
+            assert_both last    "b" "ab" 1 1
+        ); bt_end
+        bt_begin short_text; (
+            . bt_init.sh
+            assert_both first   "ab" "a" 1 0
+            assert_both last    "ab" "b" 1 1
+        ); bt_end
+    ); bt_end
+); bt_end
+
+bt_begin extglob; (
+    . bt_init.sh
+    bt_begin pattern_set; (
+        . bt_init.sh
+        assert_both empty                   "@()"       ""  0 0
+        assert_both empty_head              "@()a"      "a" 0 0
+        assert_both empty_tail              "a@()"      "a" 0 0
+        assert_both nested_empty_head       "@(@()a)"   "a" 0 0
+        assert_both nested_empty_tail       "@(a@())"   "a" 0 0
+        assert_both nested_empty            "@(@())"    ""  0 0
+        assert_both alternate_empty         "@(|)"      ""  0 0
+        assert_both nested_alternate_empty  "@(@(|))"   ""  0 0
+        bt_begin alternate_nested_empty; (
+            . bt_init.sh
+            assert_both first   "@(@()|)"      ""  0 0
+            assert_both last    "@(|@())"      ""  0 0
+            assert_both both    "@(@()|@())"   ""  0 0
+        ); bt_end
+        bt_begin escaped; (
+            . bt_init.sh
+            assert_both pipe "@(\\|)" "|" 0 0
+            assert_both paren_opening "@(\\()" "(" 0 0
+            assert_both paren_closing "@(\\))" ")" 0 0
+            assert_both operator "@(\\@())" "@()" 0 0
+            bt_begin nested; (
+                . bt_init.sh
+                assert_both pipe "@(@(\\|))" "|" 0 0
+                assert_both paren_opening "@(@(\\())" "(" 0 0
+                assert_both paren_closing "@(@(\\)))" ")" 0 0
+                assert_both operator "@(@(\\@()))" "@()" 0 0
+            ); bt_end
+            assert_both nested_pipe "@(@(\\|)|)" "|" 0 0
+        ); bt_end
+    ); bt_end
+    bt_begin "@"; (
+        . bt_init.sh
+        bt_begin "one_pattern"; (
+            . bt_init.sh
+            assert_both empty_to_empty     "@()"   ""  0 0
+            assert_both empty_to_nonempty  "@()"   "a" 1 1
+            assert_both nonempty_to_empty  "@(a)"  ""  1 0
+        ); bt_end
+        bt_begin "two_patterns"; (
+            . bt_init.sh
+            assert_both empty_to_empty              "@(|)"  ""  0 0
+            assert_both nonempty_first_to_empty     "@(a|)" ""  0 0
+            assert_both nonempty_first_to_nonempty  "@(a|)" "a" 0 0
+            assert_both nonempty_last_to_empty      "@(|a)" ""  0 0
+            assert_both nonempty_last_to_nonempty   "@(|a)" "a" 0 0
+            assert_both nonempty_to_empty           "@(a|b)"    ""  1 0
+            assert_both nonempty_to_first           "@(a|b)"    "a" 0 0
+            assert_both nonempty_to_last            "@(a|b)"    "b" 0 0
+            assert_both nonempty_to_none            "@(a|b)"    "c" 1 1
+        ); bt_end
+    ); bt_end
+    bt_begin "*"; (
+        . bt_init.sh
+        assert_both empty_to_empty      "*()"  ""       0 0
+        assert_both empty_to_one        "*()"  "a"      1 1
+        assert_both one_to_empty        "*(a)" ""       0 0
+        assert_both one_to_one          "*(a)" "a"      0 0
+        assert_both one_to_many         "*(a)" "aa"     0 0
+        assert_both two_to_empty        "*(ab)" ""      0 0
+        assert_both two_to_many         "*(ab)" "abab"  0 0
+        assert_both two_to_many_part    "*(ab)" "aba"   1 0
+    ); bt_end
+    bt_begin "?"; (
+        . bt_init.sh
+        assert_both empty_to_empty      "?()"  ""       0 0
+        assert_both empty_to_one        "?()"  "a"      1 1
+        assert_both one_to_empty        "?(a)" ""       0 0
+        assert_both one_to_many         "?(a)" "aa"     1 1
+        assert_both two_to_empty        "?(ab)" ""      0 0
+        assert_both two_to_two          "?(ab)" "ab"    0 0
+        assert_both two_to_many         "?(ab)" "abab"  1 1
+        assert_both two_to_one          "?(ab)" "a"     1 0
+    ); bt_end
+    bt_begin "+"; (
+        . bt_init.sh
+        assert_both empty_to_empty      "+()"  ""       0 0
+        assert_both empty_to_one        "+()"  "a"      1 1
+        assert_both one_to_empty        "+(a)" ""       1 0
+        assert_both one_to_one          "+(a)" "a"      0 0
+        assert_both one_to_many         "+(a)" "aa"     0 0
+        assert_both two_to_empty        "+(ab)" ""      1 0
+        assert_both two_to_many         "+(ab)" "abab"  0 0
+        assert_both two_to_many_part    "+(ab)" "aba"   1 0
+    ); bt_end
+    bt_begin "!"; (
+        . bt_init.sh
+        assert_both empty_to_empty      "!()"  ""       1 0
+        assert_both empty_to_one        "!()"  "a"      0 0
+        assert_both one_to_empty        "!(a)" ""       0 0
+        assert_both one_to_one          "!(a)" "a"      1 1
+        assert_both one_to_many         "!(a)" "aa"     0 0
+        assert_both two_to_empty        "!(ab)" ""      0 0
+        assert_both two_to_many         "!(ab)" "abab"  0 0
+        assert_both two_to_many_part    "!(ab)" "aba"   0 0
+    ); bt_end
+); bt_end
