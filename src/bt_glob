@@ -243,7 +243,7 @@ function match_operated_pattern_set(op, set, text)
             part_ts = nil
         else
             full_ts = nil
-            part_ts = nil
+            part_ts = #text + 1
         end
     elseif op == "?" then
         if #text == 0 then

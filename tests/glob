@@ -211,7 +211,7 @@ bt_begin extglob; (
         assert_both empty_to_empty      "!()"  ""       1 0
         assert_both empty_to_one        "!()"  "a"      0 0
         assert_both one_to_empty        "!(a)" ""       0 0
-        assert_both one_to_one          "!(a)" "a"      1 1
+        assert_both one_to_one          "!(a)" "a"      1 0
         assert_both one_to_many         "!(a)" "aa"     0 0
         assert_both two_to_empty        "!(ab)" ""      0 0
         assert_both two_to_many         "!(ab)" "abab"  0 0
