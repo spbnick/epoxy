@@ -15,25 +15,14 @@ function assert_glob()
     declare -r name="$1"
     declare -r pattern="$2"
     declare -r text="$3"
-    declare -r status="$4"
-    bt_assert -e "$status" -- "$name" bt_glob -- "$pattern" "$text"
-}
-
-function assert_both()
-{
-    declare -r name="$1"
-    declare -r pattern="$2"
-    declare -r text="$3"
     declare -r full_status="$4"
-    declare -r prfx_status="$5"
+    declare -r ppfx_status="$5"
+    declare -r tpfx_status="$6"
     bt_begin -- "$name"; (
         . bt_init.sh
-        if [ -n "$full_status" ]; then
-            bt_assert -e "$full_status" "full" bt_glob    -- "$pattern" "$text"
-        fi
-        if [ -n "$prfx_status" ]; then
-            bt_assert -e "$prfx_status" "prfx" bt_glob -p -- "$pattern" "$text"
-        fi
+        bt_assert -e "$full_status" "full" bt_glob    -- "$pattern" "$text"
+        bt_assert -e "$ppfx_status" "ppfx" bt_glob -p -- "$pattern" "$text"
+        bt_assert -e "$tpfx_status" "tpfx" bt_glob -t -- "$pattern" "$text"
     ); bt_end
 }
 
@@ -71,49 +60,56 @@ bt_begin options; (
                         eval "bt_glob $o 2>&1 >/dev/null | { ! grep -q .; }"
         ); bt_end
     done
-    for o in -p --prefix; do
+    for o in -p --pattern-prefix; do
         bt_begin -- $o; (
             . bt_init.sh
             bt_assert -e 0  match     bt_glob $o ab   a
             bt_assert -e 1  mismatch  bt_glob $o a    ab
         ); bt_end
     done
+    for o in -t --text-prefix; do
+        bt_begin -- $o; (
+            . bt_init.sh
+            bt_assert -e 1  match     bt_glob $o ab   a
+            bt_assert -e 0  mismatch  bt_glob $o a    ab
+        ); bt_end
+    done
 ); bt_end
 
 bt_begin literal; (
     . bt_init.sh
-    assert_both empty   "" "" 0 0
+    assert_glob empty   "" "" 0 0 0
 
     bt_begin one_char; (
         . bt_init.sh
-        assert_both equal       "a" "a" 0 0
-        assert_both nonequal    "a" "b" 1 1
+        assert_glob equal       "a" "a" 0 0 0
+        assert_glob nonequal    "a" "b" 1 1 1
     ); bt_end
 
     bt_begin one_char_and_empty; (
         . bt_init.sh
-        assert_both empty_text      "a" ""  1 0
-        assert_both empty_pattern   ""  "a" 1 1
+        assert_glob empty_text      "a" ""  1 0 1
+        assert_glob empty_pattern   ""  "a" 1 1 0
     ); bt_end
 
     bt_begin two_chars; (
         . bt_init.sh
-        assert_both match           "ab" "ab" 0 0
-        assert_both mismatch_first  "cb" "ab" 1 1
-        assert_both mismatch_last   "ac" "ab" 1 1
+        assert_glob match           "ab" "ab" 0 0 0
+        assert_glob mismatch_first  "cb" "ab" 1 1 1
+        assert_glob mismatch_last   "ac" "ab" 1 1 1
     ); bt_end
 
     bt_begin two_and_one_chars; (
         . bt_init.sh
         bt_begin short_pattern; (
             . bt_init.sh
-            assert_both first   "a" "ab" 1 1
-            assert_both last    "b" "ab" 1 1
+            assert_glob first   "a" "ab" 1 1 0
+            assert_glob last    "b" "ab" 1 1 1
         ); bt_end
         bt_begin short_text; (
             . bt_init.sh
-            assert_both first   "ab" "a" 1 0
-            assert_both last    "ab" "b" 1 1
+            assert_glob first   "ab" "a" 1 0 1
+            assert_glob last    "ab" "b" 1 1 1
         ); bt_end
     ); bt_end
 ); bt_end
@@ -122,99 +118,118 @@ bt_begin extglob; (
     . bt_init.sh
     bt_begin pattern_set; (
         . bt_init.sh
-        assert_both empty                   "@()"       ""  0 0
-        assert_both empty_head              "@()a"      "a" 0 0
-        assert_both empty_tail              "a@()"      "a" 0 0
-        assert_both nested_empty_head       "@(@()a)"   "a" 0 0
-        assert_both nested_empty_tail       "@(a@())"   "a" 0 0
-        assert_both nested_empty            "@(@())"    ""  0 0
-        assert_both alternate_empty         "@(|)"      ""  0 0
-        assert_both nested_alternate_empty  "@(@(|))"   ""  0 0
+        assert_glob empty                   "@()"       ""  0 0 0
+        assert_glob empty_head              "@()a"      "a" 0 0 0
+        assert_glob empty_tail              "a@()"      "a" 0 0 0
+        assert_glob nested_empty_head       "@(@()a)"   "a" 0 0 0
+        assert_glob nested_empty_tail       "@(a@())"   "a" 0 0 0
+        assert_glob nested_empty            "@(@())"    ""  0 0 0
+        assert_glob alternate_empty         "@(|)"      ""  0 0 0
+        assert_glob nested_alternate_empty  "@(@(|))"   ""  0 0 0
         bt_begin alternate_nested_empty; (
             . bt_init.sh
-            assert_both first   "@(@()|)"      ""  0 0
-            assert_both last    "@(|@())"      ""  0 0
-            assert_both both    "@(@()|@())"   ""  0 0
+            assert_glob first   "@(@()|)"      ""  0 0 0
+            assert_glob last    "@(|@())"      ""  0 0 0
+            assert_glob both    "@(@()|@())"   ""  0 0 0
         ); bt_end
         bt_begin escaped; (
             . bt_init.sh
-            assert_both pipe "@(\\|)" "|" 0 0
-            assert_both paren_opening "@(\\()" "(" 0 0
-            assert_both paren_closing "@(\\))" ")" 0 0
-            assert_both operator "@(\\@())" "@()" 0 0
+            assert_glob pipe "@(\\|)" "|" 0 0 0
+            assert_glob paren_opening "@(\\()" "(" 0 0 0
+            assert_glob paren_closing "@(\\))" ")" 0 0 0
+            assert_glob operator "@(\\@())" "@()" 0 0 0
             bt_begin nested; (
                 . bt_init.sh
-                assert_both pipe "@(@(\\|))" "|" 0 0
-                assert_both paren_opening "@(@(\\())" "(" 0 0
-                assert_both paren_closing "@(@(\\)))" ")" 0 0
-                assert_both operator "@(@(\\@()))" "@()" 0 0
+                assert_glob pipe "@(@(\\|))" "|" 0 0 0
+                assert_glob paren_opening "@(@(\\())" "(" 0 0 0
+                assert_glob paren_closing "@(@(\\)))" ")" 0 0 0
+                assert_glob operator "@(@(\\@()))" "@()" 0 0 0
             ); bt_end
-            assert_both nested_pipe "@(@(\\|)|)" "|" 0 0
+            assert_glob nested_pipe "@(@(\\|)|)" "|" 0 0 0
         ); bt_end
     ); bt_end
     bt_begin "@"; (
         . bt_init.sh
         bt_begin "one_pattern"; (
             . bt_init.sh
-            assert_both empty_to_empty     "@()"   ""  0 0
-            assert_both empty_to_nonempty  "@()"   "a" 1 1
-            assert_both nonempty_to_empty  "@(a)"  ""  1 0
+            assert_glob empty_to_empty     "@()"   ""  0 0 0
+            assert_glob empty_to_nonempty  "@()"   "a" 1 1 0
+            assert_glob nonempty_to_empty  "@(a)"  ""  1 0 1
         ); bt_end
         bt_begin "two_patterns"; (
             . bt_init.sh
-            assert_both empty_to_empty              "@(|)"  ""  0 0
-            assert_both nonempty_first_to_empty     "@(a|)" ""  0 0
-            assert_both nonempty_first_to_nonempty  "@(a|)" "a" 0 0
-            assert_both nonempty_last_to_empty      "@(|a)" ""  0 0
-            assert_both nonempty_last_to_nonempty   "@(|a)" "a" 0 0
-            assert_both nonempty_to_empty           "@(a|b)"    ""  1 0
-            assert_both nonempty_to_first           "@(a|b)"    "a" 0 0
-            assert_both nonempty_to_last            "@(a|b)"    "b" 0 0
-            assert_both nonempty_to_none            "@(a|b)"    "c" 1 1
+            assert_glob empty_to_empty              "@(|)"  ""  0 0 0
+            assert_glob nonempty_first_to_empty     "@(a|)" ""  0 0 0
+            assert_glob nonempty_first_to_nonempty  "@(a|)" "a" 0 0 0
+            assert_glob nonempty_last_to_empty      "@(|a)" ""  0 0 0
+            assert_glob nonempty_last_to_nonempty   "@(|a)" "a" 0 0 0
+            assert_glob nonempty_to_empty           "@(a|b)"    ""  1 0 1
+            assert_glob nonempty_to_first           "@(a|b)"    "a" 0 0 0
+            assert_glob nonempty_to_last            "@(a|b)"    "b" 0 0 0
+            assert_glob nonempty_to_none            "@(a|b)"    "c" 1 1 1
         ); bt_end
     ); bt_end
     bt_begin "*"; (
         . bt_init.sh
-        assert_both empty_to_empty      "*()"  ""       0 0
-        assert_both empty_to_one        "*()"  "a"      1 1
-        assert_both one_to_empty        "*(a)" ""       0 0
-        assert_both one_to_one          "*(a)" "a"      0 0
-        assert_both one_to_many         "*(a)" "aa"     0 0
-        assert_both two_to_empty        "*(ab)" ""      0 0
-        assert_both two_to_many         "*(ab)" "abab"  0 0
-        assert_both two_to_many_part    "*(ab)" "aba"   1 0
+        assert_glob empty_to_empty      "*()"  ""       0 0 0
+        assert_glob empty_to_one        "*()"  "a"      1 1 0
+        assert_glob one_to_empty        "*(a)" ""       0 0 0
+        assert_glob one_to_one          "*(a)" "a"      0 0 0
+        assert_glob one_to_many         "*(a)" "aa"     0 0 0
+        assert_glob two_to_empty        "*(ab)" ""      0 0 0
+        assert_glob two_to_many         "*(ab)" "abab"  0 0 0
+        assert_glob two_to_many_part    "*(ab)" "aba"   1 0 0
     ); bt_end
     bt_begin "?"; (
         . bt_init.sh
-        assert_both empty_to_empty      "?()"  ""       0 0
-        assert_both empty_to_one        "?()"  "a"      1 1
-        assert_both one_to_empty        "?(a)" ""       0 0
-        assert_both one_to_many         "?(a)" "aa"     1 1
-        assert_both two_to_empty        "?(ab)" ""      0 0
-        assert_both two_to_two          "?(ab)" "ab"    0 0
-        assert_both two_to_many         "?(ab)" "abab"  1 1
-        assert_both two_to_one          "?(ab)" "a"     1 0
+        assert_glob empty_to_empty      "?()"  ""       0 0 0
+        assert_glob empty_to_one        "?()"  "a"      1 1 0
+        assert_glob one_to_empty        "?(a)" ""       0 0 0
+        assert_glob one_to_many         "?(a)" "aa"     1 1 0
+        assert_glob two_to_empty        "?(ab)" ""      0 0 0
+        assert_glob two_to_two          "?(ab)" "ab"    0 0 0
+        assert_glob two_to_many         "?(ab)" "abab"  1 1 0
+        assert_glob two_to_one          "?(ab)" "a"     1 0 0
     ); bt_end
     bt_begin "+"; (
         . bt_init.sh
-        assert_both empty_to_empty      "+()"  ""       0 0
-        assert_both empty_to_one        "+()"  "a"      1 1
-        assert_both one_to_empty        "+(a)" ""       1 0
-        assert_both one_to_one          "+(a)" "a"      0 0
-        assert_both one_to_many         "+(a)" "aa"     0 0
-        assert_both two_to_empty        "+(ab)" ""      1 0
-        assert_both two_to_many         "+(ab)" "abab"  0 0
-        assert_both two_to_many_part    "+(ab)" "aba"   1 0
+        assert_glob empty_to_empty      "+()"  ""       0 0 0
+        assert_glob empty_to_one        "+()"  "a"      1 1 0
+        assert_glob one_to_empty        "+(a)" ""       1 0 1
+        assert_glob one_to_one          "+(a)" "a"      0 0 0
+        assert_glob one_to_many         "+(a)" "aa"     0 0 0
+        assert_glob two_to_empty        "+(ab)" ""      1 0 1
+        assert_glob two_to_many         "+(ab)" "abab"  0 0 0
+        assert_glob two_to_many_part    "+(ab)" "aba"   1 0 0
     ); bt_end
     bt_begin "!"; (
         . bt_init.sh
-        assert_both empty_to_empty      "!()"  ""       1 0
-        assert_both empty_to_one        "!()"  "a"      0 0
-        assert_both one_to_empty        "!(a)" ""       0 0
-        assert_both one_to_one          "!(a)" "a"      1 0
-        assert_both one_to_many         "!(a)" "aa"     0 0
-        assert_both two_to_empty        "!(ab)" ""      0 0
-        assert_both two_to_many         "!(ab)" "abab"  0 0
-        assert_both two_to_many_part    "!(ab)" "aba"   0 0
+        assert_glob empty_to_empty      "!()"  ""       1 0 1
+        assert_glob empty_to_one        "!()"  "a"      0 0 0
+        assert_glob one_to_empty        "!(a)" ""       0 0 0
+        assert_glob one_to_one          "!(a)" "a"      1 0 0
+        assert_glob one_to_many         "!(a)" "aa"     0 0 0
+        assert_glob two_to_empty        "!(ab)" ""      0 0 0
+        assert_glob two_to_many         "!(ab)" "abab"  0 0 0
+        assert_glob two_to_many_part    "!(ab)" "aba"   0 0 0
     ); bt_end
+); bt_end
+
+bt_begin path; (
+    . bt_init.sh
+
+    # Text being parent of pattern
+    bt_assert -e 1  parent_as_child     bt_glob -t  "/aaa/bbb/" "/aaa"
+    bt_assert -e 1  parent_as_exact     bt_glob     "/aaa/bbb"  "/aaa"
+    bt_assert -e 0  parent_as_parent    bt_glob -p  "/aaa/bbb"  "/aaa/"
+
+    # Text being pattern
+    bt_assert -e 1  exact_as_child      bt_glob -t  "/aaa/bbb/" "/aaa/bbb"
+    bt_assert -e 0  exact_as_exact      bt_glob     "/aaa/bbb"  "/aaa/bbb"
+    bt_assert -e 1  exact_as_parent     bt_glob -p  "/aaa/bbb"  "/aaa/bbb/"
+
+    # Text being child of pattern
+    bt_assert -e 0  child_as_child      bt_glob -t  "/aaa/bbb/" "/aaa/bbb/ccc"
+    bt_assert -e 1  child_as_exact      bt_glob     "/aaa/bbb" "/aaa/bbb/ccc"
+    bt_assert -e 1  child_as_parent     bt_glob -p  "/aaa/bbb" "/aaa/bbb/ccc/"
 ); bt_end

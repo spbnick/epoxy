@@ -17,12 +17,12 @@ local status    = {
 function usage(file)
     file:write(([[
 Usage: %s [option...] [--] pattern text
-Match a text against a glob-like pattern.
+Match a text against an extended glob-like pattern.
 
 Options:
-    -h, --help      This help message.
-    -p, --prefix    Consider a match the whole text matching the beginning of
-                    the pattern.
+    -h, --help              This help message.
+    -p, --pattern-prefix    Consider full pattern match optional.
+    -t, --text-prefix       Consider full text match optional.
 
 ]]):format(arg[0]))
 end
@@ -119,13 +119,6 @@ function parse_parens(parens)
             elseif c == ")" then
                 if depth == 0 then
                     table.insert(set, table.concat(chars))
-                    --[[
-                    io.stderr:write("parsed parens:")
-                    for _, p in ipairs(set) do
-                        io.stderr:write(' "', p, '"')
-                    end
-                    io.stderr:write("\n")
-                    --]]
                     return set, i + 1
                 else
                     depth = depth - 1
@@ -169,13 +162,15 @@ end
 ---
 -- Match a text against a pattern set, selecting longest match.
 --
--- @param set       Pattern set to match against.
--- @param text      Text to match.
+-- @param set           Pattern set to match against.
+-- @param text          Text to match.
+-- @param max_pattern   Prefer maximum pattern match, if true, prefer maximum
+--                      text match, if false or nil.
 --
 -- @return Maximum full pattern match text stop index or nil,
 --         maximum partial pattern match text stop index or nil.
 --
-function match_pattern_set(set, text)
+function match_pattern_set(set, text, max_pattern)
     local max_full_ts
     local max_part_ts
     local ps
@@ -186,12 +181,12 @@ function match_pattern_set(set, text)
     for _, p in ipairs(set) do
         sig = sig .. ' "' .. p .. '"'
     end
-    sig = sig .. '}, "' .. text .. '")'
+    sig = sig .. '}, "' .. text .. '", ' .. tostring(max_pattern) .. ')'
     io.stderr:write(sig, ">\n")
     --]]
 
     for _, p in ipairs(set) do
-        ps, ts = match(p, text)
+        ps, ts = match(p, text, max_pattern)
         if ps > #p then
             if max_full_ts == nil or ts > max_full_ts then
                 max_full_ts = ts
@@ -213,15 +208,17 @@ end
 ---
 -- Match an operation of a pattern set.
 --
--- @param op    Operator character: "?", "*", "+", "@", or "!", according to
---              extglob description in bash(1).
--- @param set   Pattern set to match against.
--- @param text  Text to match.
+-- @param op            Operator character: "?", "*", "+", "@", or "!",
+--                      according to extglob description in bash(1).
+-- @param set           Pattern set to match against.
+-- @param text          Text to match.
+-- @param max_pattern   Prefer maximum pattern match, if true, prefer maximum
+--                      text match, if false or nil.
 --
 -- @return Maximum full pattern match text stop index or nil,
 --         maximum partial pattern match text stop index or nil.
 --
-function match_operated_pattern_set(op, set, text)
+function match_operated_pattern_set(op, set, text, max_pattern)
     local full_ts
     local part_ts
 
@@ -230,14 +227,14 @@ function match_operated_pattern_set(op, set, text)
     for _, p in ipairs(set) do
         sig = sig .. ' "' .. p .. '"'
     end
-    sig = sig .. '}, "' .. text .. '")'
+    sig = sig .. '}, "' .. text .. '", ' .. tostring(max_pattern) .. ')'
     io.stderr:write(sig, ">\n")
     --]]
 
     if op == "@" then
-        full_ts, part_ts = match_pattern_set(set, text)
+        full_ts, part_ts = match_pattern_set(set, text, max_pattern)
     elseif op == "!" then
-        full_ts, part_ts = match_pattern_set(set, text)
+        full_ts, part_ts = match_pattern_set(set, text, max_pattern)
         if full_ts == nil or full_ts <= #text then
             full_ts = #text + 1
             part_ts = nil
@@ -249,7 +246,7 @@ function match_operated_pattern_set(op, set, text)
         if #text == 0 then
             full_ts, part_ts = #text + 1, nil
         else
-            full_ts, part_ts = match_pattern_set(set, text)
+            full_ts, part_ts = match_pattern_set(set, text, max_pattern)
         end
     elseif op == "*" or op == "+" then
         if #text == 0 and op == "*" then
@@ -258,7 +255,7 @@ function match_operated_pattern_set(op, set, text)
             local ti = 1
             while ti <= #text + 1 do
                 local set_full_ts, set_part_ts =
-                        match_pattern_set(set, text:sub(ti))
+                        match_pattern_set(set, text:sub(ti), max_pattern)
                 if set_full_ts ~= nil then
                     ti = ti + set_full_ts - 1
                     full_ts = ti
@@ -285,7 +282,9 @@ end
 ---
 -- Greedy matching function interface.
 --
--- @param text  Text to match.
+-- @param text          Text to match.
+-- @param max_pattern   Prefer maximum pattern match, if true, prefer maximum
+--                      text match, if false or nil.
 --
 -- @return Maximum full pattern match text stop index or nil,
 --         maximum partial pattern match text stop index or nil.
@@ -295,41 +294,47 @@ end
 -- Match a text first with a greedy matching function, then with the rest of
 -- the pattern.
 --
--- @param func      The greedy matching function.
--- @param func_pi   Index of the first character of the pattern expression
---                  used to produce the greedy matching function.
--- @param func_ti   Index of the first text character to match with the greedy
---                  function.
--- @param match_pi  Index of the first character of the rest of the pattern to
---                  match.
--- @param pattern   Pattern to match.
--- @param text      Text to match.
+-- @param func          The greedy matching function.
+-- @param func_pi       Index of the first character of the pattern expression
+--                      used to produce the greedy matching function.
+-- @param func_ti       Index of the first text character to match with the
+--                      greedy function.
+-- @param match_pi      Index of the first character of the rest of the
+--                      pattern to match.
+-- @param pattern       Pattern to match.
+-- @param text          Text to match.
+-- @param max_pattern   Prefer maximum pattern match, if true, prefer maximum
+--                      text match, if false or nil.
 --
 -- @return Pattern match stop index, text match stop index.
 --
-function match_greedy(func, func_pi, func_ti, match_pi, pattern, text)
+function match_greedy(func, func_pi, func_ti, match_pi,
+                      pattern, text, max_pattern)
     local match_ti
+    local max_part_ps       = func_pi
     local max_part_ts       = func_ti
-    local max_part_ts_ps    = func_pi
 
     --[[
-    local sig=('match_greedy(%s, %d, %d, %d, %q, %q)'):
+    local sig=('match_greedy(%s, %d, %d, %d, %q, %q, %s)'):
                 format(tostring(func), func_pi, func_ti, match_pi,
-                       pattern, text)
+                       pattern, text, tostring(max_pattern))
     io.stderr:write(sig, ">\n")
     --]]
 
     match_ti = #text + 1
     while match_ti >= func_ti do
-        local full_ts, part_ts = func(text:sub(func_ti, match_ti - 1))
+        local full_ts, part_ts = func(text:sub(func_ti, match_ti - 1),
+                                      max_pattern)
 
-        if part_ts ~= nil and part_ts > max_part_ts then
+        if not max_pattern and part_ts ~= nil and part_ts > max_part_ts then
             max_part_ts = func_ti + part_ts - 1
-            max_part_ts_ps = func_pi
+            max_part_ps = func_pi
         end
         if full_ts ~= nil then
             match_ti = func_ti + full_ts - 1
-            match_ps, match_ts = match(pattern:sub(match_pi), text:sub(match_ti))
+            match_ps, match_ts = match(pattern:sub(match_pi),
+                                       text:sub(match_ti),
+                                       max_pattern)
             match_ps = match_pi + match_ps - 1
             match_ts = match_ti + match_ts - 1
             if match_ps > #pattern and match_ts > #text then
@@ -339,9 +344,10 @@ function match_greedy(func, func_pi, func_ti, match_pi, pattern, text)
                 --]]
                 return match_ps, match_ts
             else
-                if match_ts > max_part_ts then
+                if max_pattern and match_ps > max_part_ps or
+                   not max_pattern and match_ts > max_part_ts then
+                    max_part_ps = match_ps
                     max_part_ts = match_ts
-                    max_part_ts_ps = match_ps
                 end
             end
         end
@@ -349,28 +355,31 @@ function match_greedy(func, func_pi, func_ti, match_pi, pattern, text)
     end
 
     --[[
-    io.stderr:write(sig, "< ", tostring(max_part_ts_ps), ", ",
+    io.stderr:write(sig, "< ", tostring(max_part_ps), ", ",
                     tostring(max_part_ts), "\n")
     --]]
-    return max_part_ts_ps, max_part_ts
+    return max_part_ps, max_part_ts
 end
 
 ---
 -- Match a text against a pattern.
 --
--- @param pattern   Pattern to match against.
--- @param text      Text to match.
+-- @param pattern       Pattern to match against.
+-- @param text          Text to match.
+-- @param max_pattern   Prefer maximum pattern match, if true, prefer maximum
+--                      text match, if false or nil.
 --
 -- @return Pattern match stop index, text match stop index.
 --
-function match(pattern, text)
+function match(pattern, text, max_pattern)
     local pi = 1
     local ps
     local p
     local ti = 1
 
     --[[
-    local sig = ('match(%q, %q)'):format(pattern, text)
+    local sig = ('match(%q, %q, %s)'):
+                    format(pattern, text, tostring(max_pattern))
     io.stderr:write(sig, ">\n")
     --]]
 
@@ -387,19 +396,19 @@ function match(pattern, text)
             pattern_set, ps = parse_parens(pattern:sub(pi + 2))
             pi, ti =
                 match_greedy(
-                    function (text)
+                    function (text, max_pattern)
                         return match_operated_pattern_set(p, pattern_set,
-                                                          text)
+                                                          text, max_pattern)
                     end,
-                    pi, ti, pi + 2 + ps - 1, pattern, text)
+                    pi, ti, pi + 2 + ps - 1, pattern, text, max_pattern)
             break
         end
 
         if p == "*" then
             pi, ti =
                 match_greedy(
-                    function (text) return true, #text + 1 end,
-                    pi, ti, pi + 1, pattern, text)
+                    function (text, max_pattern) return true, #text + 1 end,
+                    pi, ti, pi + 1, pattern, text, max_pattern)
             break
         end
 
@@ -444,9 +453,10 @@ end
 --
 -- Main routine
 --
-local got_dash_dash = false
-local prefix        = false
-local parameters    = {}
+local got_dash_dash     = false
+local pattern_prefix    = false
+local text_prefix       = false
+local parameters        = {}
 
 -- Parse command line arguments
 for _, a in ipairs(arg) do
@@ -456,8 +466,10 @@ for _, a in ipairs(arg) do
         elseif a == "-h" or a == "--help" then
             usage(io.stdout)
             os.exit(0)
-        elseif a == "-p" or a == "--prefix" then
-            prefix = true
+        elseif a == "-p" or a == "--pattern-prefix" then
+            pattern_prefix = true
+        elseif a == "-t" or a == "--text-prefix" then
+            text_prefix = true
         else
             io.stderr:write("Unknown option: " .. a .. "\n")
             usage(io.stderr)
@@ -478,12 +490,13 @@ local pattern, text = unpack(parameters)
 
 -- Match
 local ok, ps_or_error, ts =
-        pcall(match, pattern, text)
+        pcall(match, pattern, text, text_prefix)
 
 -- Report result
 if ok then
     local ps = ps_or_error
-    local matched = ts > #text and (prefix or ps > #pattern)
+    local matched = (text_prefix or ts > #text) and
+                    (pattern_prefix or ps > #pattern)
     os.exit(matched and status.MATCH or status.MISMATCH)
 else
     local error = ps_or_error
