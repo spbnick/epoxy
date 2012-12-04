@@ -540,7 +540,7 @@ function _bt_trap_exit()
     if [ $teardown_status != 0 ]; then
         status=$BT_STATUS_PANICKED
     # else, if exiting with failure
-    elif [ $status != 0 ]; then
+    elif [ $status != 0 ] || [ $_BT_COUNT_ERRORED != 0 ]; then
         status=$BT_STATUS_ERRORED
     # else, if there were failed tests
     elif [ $_BT_COUNT_FAILED != 0 ]; then
