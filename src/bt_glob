@@ -486,7 +486,7 @@ if ok then
     local matched = ts > #text and (prefix or ps > #pattern)
     os.exit(matched and status.MATCH or status.MISMATCH)
 else
-    local error = matched_or_error
+    local error = ps_or_error
     io.stderr:write(error, "\n")
     os.exit(status.ERROR)
 end
