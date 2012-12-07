@@ -245,7 +245,7 @@ function bt_read_args()
     #       parameter names
     declare _a
     declare -a _names=()
-    declare -i _i
+    declare _i
 
     _i=0
     while (( $# > 0 )); do
@@ -255,14 +255,14 @@ function bt_read_args()
             break;
         fi
         _names[_i]="$_a"
-        _i=_i+1
+        _i=$((_i + 1))
     done
 
     _i=0
     while (( $# > 0 && _i < ${#_names[@]} )); do
         eval "${_names[_i]}=\"$1\""
         shift
-        _i=_i+1
+        _i=$((_i + 1))
     done
 
     if (( $# > 0 || _i < ${#_names[@]} )); then

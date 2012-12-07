@@ -22,19 +22,19 @@ declare -x BT_PROTOCOL
 declare -x _BT_NAME_STACK
 
 # Skipped assert counter
-declare -i _BT_COUNT_SKIPPED
+declare _BT_COUNT_SKIPPED
 # Passed assert counter
-declare -i _BT_COUNT_PASSED
+declare _BT_COUNT_PASSED
 # Waived assert counter
-declare -i _BT_COUNT_WAIVED
+declare _BT_COUNT_WAIVED
 # Failed assert counter
-declare -i _BT_COUNT_FAILED
+declare _BT_COUNT_FAILED
 # Errored assert counter
-declare -i _BT_COUNT_ERRORED
+declare _BT_COUNT_ERRORED
 # Panicked assert counter
-declare -i _BT_COUNT_PANICKED
+declare _BT_COUNT_PANICKED
 # Aborted assert counter
-declare -i _BT_COUNT_ABORTED
+declare _BT_COUNT_ABORTED
 
 # Teardown command argc array
 declare -a _BT_TEARDOWN_ARGC
