@@ -69,7 +69,8 @@ function bt_abort_assert()
     _status=$?
     bt_attrs_pop
     if [ $_status != 0 ]; then
-        bt_abort "Assertion failed: $@"
+        declare -r _loc="${BASH_SOURCE[1]}: line ${BASH_LINENO[0]}"
+        bt_abort "$_loc: Assertion failed: $@"
     fi
 }
 
