@@ -10,6 +10,9 @@
 . bt_shell_init.sh
 . bt_util.sh
 
+# Reset SIGABRT handler possibly set by surrounding test.
+trap - SIGABRT
+
 bt_abort_assert bt_bool_is_valid "${_BT_SKIPPED-false}"
 bt_abort_assert bt_bool_is_valid "${_BT_WAIVED-false}"
 
