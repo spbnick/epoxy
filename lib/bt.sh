@@ -193,14 +193,14 @@ function bt_assert_begin()
 
     # Export "skipped" flag, so if the command is skipped it could exit
     # immediately
-    declare -g -x _BT_SKIPPED="$skipped"
+    export _BT_SKIPPED="$skipped"
 
     # Export "waived" flag, so if the command is waived it could exit
     # immediately
-    declare -g -x _BT_WAIVED="$waived"
+    export _BT_WAIVED="$waived"
 
     # Remember expected status - to be compared to the command exit status
-    declare -g _BT_EXPECTED_STATUS="$expected_status"
+    _BT_EXPECTED_STATUS="$expected_status"
 
     # "Enter" the assertion
     bt_strstack_push _BT_NAME_STACK / "$name"
@@ -371,11 +371,11 @@ function bt_begin()
 
     # Export "skipped" flag, so if the command is skipped it could exit
     # immediately
-    declare -g -x _BT_SKIPPED="$skipped"
+    export _BT_SKIPPED="$skipped"
 
     # Export "waived" flag, so if the command is waived it could exit
     # immediately
-    declare -g -x _BT_WAIVED="$waived"
+    export _BT_WAIVED="$waived"
 
     # "Enter" the assertion
     bt_strstack_push _BT_NAME_STACK / "$name"
@@ -508,7 +508,7 @@ function bt_teardown_pop()
 function bt_teardown_exec()
 {
     bt_abort_assert [ ${#_BT_TEARDOWN_ARGC[@]} != 0 ]
-    "${_BT_TEARDOWN_ARGV[@]: -${_BT_TEARDOWN_ARGC[-1]}}"
+    "${_BT_TEARDOWN_ARGV[@]: -${_BT_TEARDOWN_ARGC[${#_BT_TEARDOWN_ARGC[@]}-1]}}"
 }
 
 # Execute and pop all teardown commands from the teardown stack.

@@ -17,7 +17,7 @@ function a()
 {
     declare -r name="$1"
     declare -r status_suffix="$2"
-    declare -r status_name="BT_STATUS_${status_suffix^^}"
+    declare -r status_name="BT_STATUS_`echo $status_suffix | tr a-z A-Z`"
 
     bt_assert_begin -e "${!status_name}" "$name"; (
         . bt_assert_init.sh
