@@ -25,3 +25,13 @@ fi
 
 # Last initialized subshell depth
 declare _BT_SHELL_INIT_SUBSHELL=$BASH_SUBSHELL
+
+# Set PID that bt_abort should send SIGABRT to - the PID of the (sub)shell
+# being initialized, if can be retrieved
+if [ -n "${BASHPID+set}" ]; then
+    BT_ABORT_PID="$BASHPID"
+elif [ -r /proc/self/stat ]; then
+    declare _BT_SHELL_INIT_DISCARD=
+    read -r BT_ABORT_PID _BT_SHELL_INIT_DISCARD < /proc/self/stat
+    unset _BT_SHELL_INIT_DISCARD
+fi

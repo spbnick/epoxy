@@ -13,6 +13,9 @@ declare -r _BT_UTIL_SH=
 # Shell attribute state stack
 declare -a _BT_ATTR_STACK=()
 
+# The PID bt_abort should send SIGABRT to, or empty, meaning $$.
+declare BT_ABORT_PID=
+
 # Output a backtrace
 # Args: [start_frame]
 function bt_backtrace()
@@ -35,15 +38,22 @@ function bt_backtrace()
     done
 }
 
-# Abort execution by sending SIGABRT to $BASHPID, optionally outputting a
-# message.
+# Abort execution by sending SIGABRT to BT_ABORT_PID, or to $$ if not set,
+# optionally outputting a message.
 # Args: [message...]
 function bt_abort()
 {
+    declare pid=
+
+    if [ -n "${BT_ABORT_PID:+set}" ]; then
+        pid="$BT_ABORT_PID"
+    else
+        pid="$$"
+    fi
     if [ $# != 0 ]; then
         echo "$@" >&2
     fi
-    kill -s SIGABRT $BASHPID
+    kill -s SIGABRT "$pid"
 }
 
 # Abort execution if an assertion is invalid (a command fails).
