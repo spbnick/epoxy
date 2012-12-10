@@ -127,7 +127,7 @@ function bt_strstack_push()
         if [[ "$1" == *[$_sep[:cntrl:]]* ]]; then
             bt_abort "Invalid string-based stack value: $1"
         fi
-        eval "$_stack=\"\$$_stack$_sep$1\"";
+        eval "$_stack=\"\${$_stack}\${_sep}\${1}\"";
         shift
     done
 }
