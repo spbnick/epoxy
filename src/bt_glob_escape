@@ -1,0 +1,154 @@
+#!/usr/bin/env lua
+--
+-- Escape text for use in an extended glob-like pattern.
+--
+-- Copyright (c) 2012 Red Hat, Inc. All rights reserved.
+--
+-- This copyrighted material is made available to anyone wishing
+-- to use, modify, copy, or redistribute it subject to the terms
+-- and conditions of the GNU General Public License version 2.
+
+---
+-- Exit status
+--
+local status    = {
+    SUCCESS     = 0,
+    ERROR       = 1,
+}
+
+---
+-- Output usage information to a file.
+--
+-- @param file  The file to output to.
+--
+function usage(file)
+    file:write(([[
+Usage: %s [option...] [--] text
+Escape text for use in an extended glob-like pattern.
+
+Options:
+    -h, --help      This help message.
+    -s, --set-item  Escape text as a pattern to be included in a pattern set.
+
+]]):format(arg[0]:match("[^/]+$")))
+end
+
+---
+-- Escape text to be used literally in an extended glob-like pattern.
+--
+-- @param text  The text to escape.
+--
+-- @return Escaped text.
+--
+function escape_text(text)
+    local chars = {}
+
+    for i = 1, #text, 1 do
+        local c = text:sub(i, i)
+        if c:match("^[\\?*%[%]]$") or
+           c:match("^[+@!]$") and text:sub(i + 1, i + 1) == "(" then
+            table.insert(chars, "\\")
+        end
+        table.insert(chars, c)
+    end
+    return table.concat(chars)
+end
+
+---
+-- Escape text to be used as a pattern in a pattern set of an extended
+-- glob-like pattern.
+--
+-- @param text  The text to escape.
+--
+-- @return Escaped text.
+--
+function escape_set_item(text)
+    local depth = 0
+    local chars = {}
+    local i
+
+    i = 1
+    while i <= #text do
+        local c = text:sub(i, i)
+        if c == "\\" then
+            table.insert(chars, c)
+            i = i + 1
+            if i > #text then
+                error("Incomplete pattern escape sequence")
+            end
+            c = text:sub(i, i)
+        elseif depth == 0 then
+            if c == "(" or c == "|" or c == ")" then
+                table.insert(chars, "\\")
+            elseif text:sub(i, i + 1):match("^[?*+@!]%($") then
+                table.insert(chars, c)
+                i = i + 1
+                c = text:sub(i, i)
+                depth = depth + 1
+            end
+        else
+            if c == "(" then
+                depth = depth + 1
+            elseif c == ")" then
+                depth = depth - 1
+            end
+        end
+        table.insert(chars, c)
+        i = i + 1
+    end
+
+    if depth > 0 then
+        error("Unterminated parentheses expression")
+    end
+    return table.concat(chars)
+end
+
+--
+-- Main routine
+--
+local got_dash_dash     = false
+local set_item          = false
+local parameters        = {}
+
+-- Parse command line arguments
+for _, a in ipairs(arg) do
+    if not got_dash_dash and a:sub(1, 1) == "-" then
+        if a == "--" then
+            got_dash_dash = true
+        elseif a == "-h" or a == "--help" then
+            usage(io.stdout)
+            os.exit(0)
+        elseif a == "-s" or a == "--set-item" then
+            set_item = true
+        else
+            io.stderr:write("Unknown option: " .. a .. "\n")
+            usage(io.stderr)
+            os.exit(status.ERROR)
+        end
+    else
+        table.insert(parameters, a)
+    end
+end
+
+if #parameters ~= 1 then
+    io.stderr:write("Invalid number of positional arguments\n")
+    usage(io.stderr)
+    os.exit(status.ERROR)
+end
+
+local text = unpack(parameters)
+
+-- Escape
+local ok, escaped_text_or_err = pcall(set_item
+                                        and escape_set_item
+                                         or escape_text,
+                                      text)
+
+-- Report result
+if ok then
+    io.stdout:write(escaped_text_or_err)
+    os.exit(status.SUCCESS)
+else
+    io.stderr:write(escaped_text_or_err, "\n")
+    os.exit(status.ERROR)
+end

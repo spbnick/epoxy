@@ -1,0 +1,101 @@
+#!/bin/bash
+#
+# bt_glob_escape test suite
+#
+# Copyright (c) 2012 Red Hat, Inc. All rights reserved.
+#
+# This copyrighted material is made available to anyone wishing
+# to use, modify, copy, or redistribute it subject to the terms
+# and conditions of the GNU General Public License version 2.
+
+. bt_init.sh
+
+function at()
+{
+    declare -r input="$1"
+    declare -r expected_output="$2"
+    bt_assert_begin "$input"; (
+        . bt_assert_init.sh
+        declare -r output=`bt_glob_escape "\$input"`
+        [ "$output" == "$expected_output" ]
+    ); bt_assert_end
+}
+
+function asi()
+{
+    declare -r input="$1"
+    declare -r expected_output="$2"
+    bt_assert_begin "$input"; (
+        . bt_assert_init.sh
+        declare -r output=`bt_glob_escape --set-item "\$input"`
+        [ "$output" == "$expected_output" ]
+    ); bt_assert_end
+}
+
+bt_begin no_args; (
+    . bt_init.sh
+    bt_assert -e 1 status eval "bt_glob_escape >/dev/null 2>&1"
+    bt_assert -e 1 stdout \
+                    eval "bt_glob_escape 2>/dev/null | { ! grep -q .; }"
+    bt_assert -e 1 stderr \
+                    eval "bt_glob_escape 2>&1 >/dev/null | grep -q ^Usage:"
+); bt_end
+
+bt_begin options; (
+    . bt_init.sh
+    bt_assert -e 0  none    eval "bt_glob_escape a >/dev/null"
+    for o in -h --help; do
+        bt_begin -- $o; (
+            . bt_init.sh
+            # check that stdout contains "Usage:"
+            bt_assert status eval "bt_glob_escape $o >/dev/null 2>&1"
+            bt_assert stdout \
+                        eval "bt_glob_escape $o 2>/dev/null | grep -q ^Usage:"
+            bt_assert stderr \
+                        eval "bt_glob_escape $o 2>&1 >/dev/null | { ! grep -q .; }"
+        ); bt_end
+    done
+    for o in -s --set-item; do
+        bt_begin -- $o; (
+            . bt_init.sh
+            bt_assert -e 0  valid     eval "bt_glob_escape $o a >/dev/null"
+            bt_assert -e 1  invalid   eval "bt_glob_escape $o @\( 2>/dev/null"
+        ); bt_end
+    done
+); bt_end
+
+bt_begin text; (
+    . bt_init.sh
+    at a a
+    at '\' '\\'
+    at '*' '\*'
+    at '?' '\?'
+    at '[' '\['
+    at ']' '\]'
+    at '@' '@'
+    at '@(' '\@('
+    at '+' '+'
+    at '+(' '\+('
+    at '!' '!'
+    at '!(' '\!('
+); bt_end
+
+bt_begin set_item; (
+    . bt_init.sh
+    asi a a
+    asi '\\' '\\'
+    asi '*' '*'
+    asi '?' '?'
+    asi '[' '['
+    asi ']' ']'
+    asi '@' '@'
+    asi '!' '!'
+    asi '(|)' '\(\|\)'
+    asi '?()' '?()'
+    asi '*()' '*()'
+    asi '+()' '+()'
+    asi '@()' '@()'
+    asi '!()' '!()'
+    asi '@((|))' '@((|))'
+    asi '@(@())' '@(@())'
+); bt_end
