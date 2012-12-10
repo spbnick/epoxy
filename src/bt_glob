@@ -32,7 +32,7 @@ Options:
     -p, --pattern-prefix    Consider full pattern match optional.
     -t, --text-prefix       Consider full text match optional.
 
-]]):format(arg[0]))
+]]):format(arg[0]:match("[^/]+$")))
 end
 
 ---
