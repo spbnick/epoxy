@@ -415,7 +415,7 @@ function match(pattern, text, max_pattern)
         if p == "*" then
             pi, ti =
                 match_greedy(
-                    function (text, max_pattern) return true, #text + 1 end,
+                    function (text, max_pattern) return #text + 1, nil end,
                     pi, ti, pi + 1, pattern, text, max_pattern)
             break
         end

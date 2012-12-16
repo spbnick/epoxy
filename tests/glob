@@ -114,6 +114,14 @@ bt_begin literal; (
     ); bt_end
 ); bt_end
 
+bt_begin "*"; (
+    . bt_init.sh
+    assert_glob one_to_empty        "*"     ""  0 0 0
+    assert_glob one_to_non_empty    "*"     " " 0 0 0
+    assert_glob two_to_empty        "**"    ""  0 0 0
+    assert_glob two_to_non_empty    "**"    " " 0 0 0
+); bt_end
+
 bt_begin extglob; (
     . bt_init.sh
     bt_begin pattern_set; (
