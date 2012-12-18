@@ -87,6 +87,14 @@ function _bt_init()
     BT_PROTOCOL=test
 }
 
+# Unset external test variables
+function _bt_cleanup()
+{
+    unset BT_PROTOCOL \
+          _BT_NAME_STACK \
+          BT_{,DONT_}{INCLUDE,UNSKIP,UNWAIVE}
+}
+
 # Finalize the test.
 # Args: status
 function _bt_fini()

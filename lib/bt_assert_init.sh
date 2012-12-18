@@ -9,6 +9,7 @@
 
 . bt_shell_init.sh
 . bt_util.sh
+. bt.sh
 
 # Reset SIGABRT handler possibly set by surrounding test.
 trap - SIGABRT
@@ -16,12 +17,10 @@ trap - SIGABRT
 bt_abort_assert bt_bool_is_valid "${_BT_SKIPPED-false}"
 bt_abort_assert bt_bool_is_valid "${_BT_WAIVED-false}"
 
-# If entering a skipped script
-if ${_BT_SKIPPED:-false}; then
+# If entering a skipped or waived assertion shell
+if ${_BT_SKIPPED:-false} || ${_BT_WAIVED-false}; then
     exit 0
 fi
 
-# If entering a waived script
-if ${_BT_WAIVED-false}; then
-    exit 0
-fi
+# Unset external test variables
+_bt_cleanup

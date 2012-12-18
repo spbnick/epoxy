@@ -11,18 +11,13 @@
 . bt_util.sh
 . bt.sh
 
-# Initialize the test
-_bt_init
-
 bt_abort_assert bt_bool_is_valid "${_BT_SKIPPED-false}"
 bt_abort_assert bt_bool_is_valid "${_BT_WAIVED-false}"
 
-# If entering a skipped test
-if ${_BT_SKIPPED:-false}; then
-    _bt_fini $BT_STATUS_SKIPPED
+# If entering a skipped or waived test shell
+if ${_BT_SKIPPED:-false} || ${_BT_WAIVED:-false}; then
+    exit 0
 fi
 
-# If entering a waived test
-if ${_BT_WAIVED:-false}; then
-    _bt_fini $BT_STATUS_WAIVED
-fi
+# Initialize the test
+_bt_init

@@ -21,7 +21,6 @@ function a()
 
     bt_assert_begin -e "${!status_name}" "$name"; (
         . bt_assert_init.sh
-        unset _BT_NAME_STACK
         {
             echo ". bt_init.sh"
             cat
