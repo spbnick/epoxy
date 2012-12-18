@@ -12,6 +12,7 @@ declare -r _BT_SH=
 
 . bt_util.sh
 . bt_status.sh
+. bt_glob.sh
 
 # Protocol for this test ("generic", or "test")
 declare _BT_PROTOCOL
@@ -35,6 +36,14 @@ declare _BT_COUNT_ERRORED
 declare _BT_COUNT_PANICKED
 # Aborted assert counter
 declare _BT_COUNT_ABORTED
+
+# NOTE: using export instead of declare -x as a bash 3.x bug workaround
+# Glob pattern matching tests to (not) include in the run
+export BT_INCLUDE BT_DONT_INCLUDE
+# Glob pattern matching tests to (not) remove skipped status from
+export BT_UNSKIP BT_DONT_UNSKIP
+# Glob pattern matching tests to (not) remove waived status from
+export BT_UNWAIVE BT_DONT_UNWAIVE
 
 # Teardown command argc array
 declare -a _BT_TEARDOWN_ARGC
@@ -93,6 +102,56 @@ function _bt_fini()
         _bt_log_status "$_BT_NAME_STACK" $status
         [ "$status" -le $BT_STATUS_WAIVED ]
         exit
+    fi
+}
+
+# Match either a final or a partial assertion path against a filter - a pair
+# of optional pattern variables - one that should match and one that
+# shouldn't.
+# Args: path final filter default
+function bt_path_filter()
+{
+    declare -r path="$1"
+    declare -r final="$2"
+    declare -r filter="$3"
+    declare -r default="$4"
+
+    declare -r include_var="BT_$filter"
+    declare -r exclude_var="BT_DONT_$filter"
+
+    # If exclude variable is specified
+    if [ -n "${!exclude_var+set}" ]; then
+        # If excluded, i.e.:
+        # If it's the exact node
+        if bt_glob_aborting "${!exclude_var}" "$path" ||
+           # Or a child
+           bt_glob_aborting --text-prefix "${!exclude_var}/" "$path"; then
+            return 1
+        else
+            return 0
+        fi
+    fi
+
+    # If include variable is specified
+    if [ -n "${!include_var+set}" ]; then
+        # If included, i.e.:
+        # If it's a possible parent
+        if ! $final &&
+           bt_glob_aborting --pattern-prefix "${!include_var}" "$path/" ||
+           # Or the exact node
+           bt_glob_aborting "${!include_var}" "$path" ||
+           # Or a child
+           bt_glob_aborting --text-prefix "${!include_var}/" "$path"; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+
+    if $default; then
+        return 0
+    else
+        return 1
     fi
 }
 
@@ -191,6 +250,24 @@ function bt_assert_begin()
     declare -r name="$1"
     shift
 
+    # "Enter" the assertion
+    bt_strstack_push _BT_NAME_STACK / "$name"
+
+    # Disable skipping if the path matches "UNSKIP" filter
+    if bt_path_filter "$_BT_NAME_STACK" true UNSKIP false; then
+        skipped=false
+    fi
+
+    # Enable skipping if the path doesn't match "INCLUDE" filter
+    if ! bt_path_filter "$_BT_NAME_STACK" true INCLUDE true; then
+        skipped=true
+    fi
+
+    # Disable waiving if the path matches "UNWAIVE" filter
+    if bt_path_filter "$_BT_NAME_STACK" true UNWAIVE false; then
+        waived=false
+    fi
+
     # Export "skipped" flag, so if the command is skipped it could exit
     # immediately
     export _BT_SKIPPED="$skipped"
@@ -202,8 +279,6 @@ function bt_assert_begin()
     # Remember expected status - to be compared to the command exit status
     _BT_EXPECTED_STATUS="$expected_status"
 
-    # "Enter" the assertion
-    bt_strstack_push _BT_NAME_STACK / "$name"
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
 }
@@ -369,6 +444,24 @@ function bt_begin()
     declare -r name="$1"
     shift
 
+    # "Enter" the assertion
+    bt_strstack_push _BT_NAME_STACK / "$name"
+
+    # Disable skipping if path matches "UNSKIP" filter
+    if bt_path_filter "$_BT_NAME_STACK" false UNSKIP false; then
+        skipped=false
+    fi
+
+    # Enable skipping if path doesn't match "INCLUDE" filter
+    if ! bt_path_filter "$_BT_NAME_STACK" false INCLUDE true; then
+        skipped=true
+    fi
+
+    # Disable waiving if path matches "UNWAIVE" filter
+    if bt_path_filter "$_BT_NAME_STACK" false UNWAIVE false; then
+        waived=false
+    fi
+
     # Export "skipped" flag, so if the command is skipped it could exit
     # immediately
     export _BT_SKIPPED="$skipped"
@@ -376,9 +469,6 @@ function bt_begin()
     # Export "waived" flag, so if the command is waived it could exit
     # immediately
     export _BT_WAIVED="$waived"
-
-    # "Enter" the assertion
-    bt_strstack_push _BT_NAME_STACK / "$name"
 
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
