@@ -319,7 +319,7 @@ function bt_assert()
     begin_args[${#begin_args[@]}]="$name"
 
     bt_assert_begin "${begin_args[@]}"
-    if ! $waived; then
+    if ! $waived && ! $skipped; then
         "$@"
     fi
     bt_assert_end
