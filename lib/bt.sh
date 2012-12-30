@@ -14,14 +14,37 @@ declare -r _BT_SH=
 . bt_status.sh
 . bt_glob.sh
 
-# Protocol for this suite ("generic", or "suite")
-declare _BT_PROTOCOL
-# Protocol for sub-suites (nothing, "generic", or "suite")
-declare -x BT_PROTOCOL
+# List of inter-suite environment variables.
+declare -a _BT_EXPORT_LIST=()
+
+# Declare inter-suite environment variables.
+# Args: [_name...]
+function bt_export()
+{
+    bt_arrstack_push _BT_EXPORT_LIST "$@"
+    export -- "$@"
+}
+
+# Protocol for suites (nothing, "generic", or "suite")
+bt_export BT_PROTOCOL
+
+# NOTE: using export instead of declare -x as a bash 3.x bug workaround
+# Glob pattern matching assertions to (not) include in the run
+bt_export BT_INCLUDE BT_DONT_INCLUDE
+# Glob pattern matching assertions to (not) remove skipped status from
+bt_export BT_UNSKIP BT_DONT_UNSKIP
+# Glob pattern matching assertions to (not) remove waived status from
+bt_export BT_UNWAIVE BT_DONT_UNWAIVE
 
 # Assertion name stack
-declare -x _BT_NAME_STACK
+bt_export _BT_NAME_STACK
+# "Skipped" flag - exit assertion shell immediately, if "true".
+bt_export _BT_SKIPPED
+# "Waived" flag - exit assertion shell immediately, if "true".
+bt_export _BT_WAIVED
 
+# Protocol for this suite ("generic", or "suite")
+declare _BT_PROTOCOL
 # Skipped assertion counter
 declare _BT_COUNT_SKIPPED
 # Passed assertion counter
@@ -36,14 +59,6 @@ declare _BT_COUNT_ERRORED
 declare _BT_COUNT_PANICKED
 # Aborted assertion counter
 declare _BT_COUNT_ABORTED
-
-# NOTE: using export instead of declare -x as a bash 3.x bug workaround
-# Glob pattern matching assertions to (not) include in the run
-export BT_INCLUDE BT_DONT_INCLUDE
-# Glob pattern matching assertions to (not) remove skipped status from
-export BT_UNSKIP BT_DONT_UNSKIP
-# Glob pattern matching assertions to (not) remove waived status from
-export BT_UNWAIVE BT_DONT_UNWAIVE
 
 # Teardown command argc array
 declare -a _BT_TEARDOWN_ARGC
@@ -90,9 +105,7 @@ function _bt_init()
 # Unset external test suite variables
 function _bt_cleanup()
 {
-    unset BT_PROTOCOL \
-          _BT_NAME_STACK \
-          BT_{,DONT_}{INCLUDE,UNSKIP,UNWAIVE}
+    unset -- "${_BT_EXPORT_LIST[@]}"
 }
 
 # Finalize the test suite.
@@ -278,11 +291,11 @@ function bt_test_begin()
 
     # Export "skipped" flag, so if the command is skipped it could exit
     # immediately
-    export _BT_SKIPPED="$skipped"
+    _BT_SKIPPED="$skipped"
 
     # Export "waived" flag, so if the command is waived it could exit
     # immediately
-    export _BT_WAIVED="$waived"
+    _BT_WAIVED="$waived"
 
     # Remember expected status - to be compared to the command exit status
     _BT_EXPECTED_STATUS="$expected_status"
@@ -314,13 +327,13 @@ function bt_test_end()
     if $_BT_WAIVED; then
         status=$BT_STATUS_WAIVED
     fi
-    unset _BT_WAIVED
+    _BT_WAIVED=false
 
     bt_abort_assert [ ${_BT_SKIPPED+set} ]
     if $_BT_SKIPPED; then
         status=$BT_STATUS_SKIPPED
     fi
-    unset _BT_SKIPPED
+    _BT_SKIPPED=false
 
     bt_abort_assert bt_status_is_valid $status
     _bt_log_status "$name" $status
@@ -472,11 +485,11 @@ function bt_suite_begin()
 
     # Export "skipped" flag, so if the command is skipped it could exit
     # immediately
-    export _BT_SKIPPED="$skipped"
+    _BT_SKIPPED="$skipped"
 
     # Export "waived" flag, so if the command is waived it could exit
     # immediately
-    export _BT_WAIVED="$waived"
+    _BT_WAIVED="$waived"
 
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
@@ -497,13 +510,13 @@ function bt_suite_end()
     if $_BT_WAIVED; then
         status=$BT_STATUS_WAIVED
     fi
-    unset _BT_WAIVED
+    _BT_WAIVED=false
 
     bt_abort_assert [ ${_BT_SKIPPED+set} ]
     if $_BT_SKIPPED; then
         status=$BT_STATUS_SKIPPED
     fi
-    unset _BT_SKIPPED
+    _BT_SKIPPED=false
 
     bt_abort_assert bt_status_is_valid $status
     _bt_log_status "$name" $status
