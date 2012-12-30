@@ -1,5 +1,5 @@
 #
-# Initialize a test (sub)shell
+# Initialize a suite (sub)shell
 #
 # Copyright (c) 2012 Red Hat, Inc. All rights reserved.
 #
@@ -14,10 +14,10 @@
 bt_abort_assert bt_bool_is_valid "${_BT_SKIPPED-false}"
 bt_abort_assert bt_bool_is_valid "${_BT_WAIVED-false}"
 
-# If entering a skipped or waived test shell
+# If entering a skipped or waived assertion shell
 if ${_BT_SKIPPED:-false} || ${_BT_WAIVED:-false}; then
     exit 0
 fi
 
-# Initialize the test
+# Initialize the suite
 _bt_init

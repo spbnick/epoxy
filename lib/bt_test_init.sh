@@ -1,5 +1,5 @@
 #
-# Initialize an assertion (sub)shell
+# Initialize a test (sub)shell
 #
 # Copyright (c) 2012 Red Hat, Inc. All rights reserved.
 #
@@ -11,7 +11,7 @@
 . bt_util.sh
 . bt.sh
 
-# Reset SIGABRT handler possibly set by surrounding test.
+# Reset SIGABRT handler set by possible surrounding suite.
 trap - SIGABRT
 
 bt_abort_assert bt_bool_is_valid "${_BT_SKIPPED-false}"
@@ -22,5 +22,5 @@ if ${_BT_SKIPPED:-false} || ${_BT_WAIVED-false}; then
     exit 0
 fi
 
-# Unset external test variables
+# Unset external suite variables
 _bt_cleanup

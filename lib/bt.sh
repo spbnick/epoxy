@@ -1,5 +1,5 @@
 #
-# Test library
+# Test suite
 #
 # Copyright (c) 2012 Red Hat, Inc. All rights reserved.
 #
@@ -14,35 +14,35 @@ declare -r _BT_SH=
 . bt_status.sh
 . bt_glob.sh
 
-# Protocol for this test ("generic", or "test")
+# Protocol for this suite ("generic", or "suite")
 declare _BT_PROTOCOL
-# Protocol for sub-tests (nothing, "generic", or "test")
+# Protocol for sub-suites (nothing, "generic", or "suite")
 declare -x BT_PROTOCOL
 
-# Assert name stack
+# Assertion name stack
 declare -x _BT_NAME_STACK
 
-# Skipped assert counter
+# Skipped assertion counter
 declare _BT_COUNT_SKIPPED
-# Passed assert counter
+# Passed assertion counter
 declare _BT_COUNT_PASSED
-# Waived assert counter
+# Waived assertion counter
 declare _BT_COUNT_WAIVED
-# Failed assert counter
+# Failed assertion counter
 declare _BT_COUNT_FAILED
-# Errored assert counter
+# Errored assertion counter
 declare _BT_COUNT_ERRORED
-# Panicked assert counter
+# Panicked assertion counter
 declare _BT_COUNT_PANICKED
-# Aborted assert counter
+# Aborted assertion counter
 declare _BT_COUNT_ABORTED
 
 # NOTE: using export instead of declare -x as a bash 3.x bug workaround
-# Glob pattern matching tests to (not) include in the run
+# Glob pattern matching assertions to (not) include in the run
 export BT_INCLUDE BT_DONT_INCLUDE
-# Glob pattern matching tests to (not) remove skipped status from
+# Glob pattern matching assertions to (not) remove skipped status from
 export BT_UNSKIP BT_DONT_UNSKIP
-# Glob pattern matching tests to (not) remove waived status from
+# Glob pattern matching assertions to (not) remove waived status from
 export BT_UNWAIVE BT_DONT_UNWAIVE
 
 # Teardown command argc array
@@ -50,15 +50,15 @@ declare -a _BT_TEARDOWN_ARGC
 # Teardown command argv array
 declare -a _BT_TEARDOWN_ARGV
 
-# Initialize the test.
+# Initialize the test suite.
 function _bt_init()
 {
     # Verify BT_PROTOCOL value
     if [ -n "${BT_PROTOCOL:-}" ] &&
-       [ "$BT_PROTOCOL" != "generic" ] && [ "$BT_PROTOCOL" != "test" ]; then
+       [ "$BT_PROTOCOL" != "generic" ] && [ "$BT_PROTOCOL" != "suite" ]; then
         echo "Invalid value of BT_PROTOCOL environment variable:" \
              "\"$BT_PROTOCOL\","
-             "expecting \"test\", \"generic\", or nothing" >&2
+             "expecting \"suite\", \"generic\", or nothing" >&2
         exit 127
     fi
 
@@ -80,14 +80,14 @@ function _bt_init()
     # Set SIGABRT trap to capture aborts
     trap _bt_trap_sigabrt SIGABRT
 
-    # Ask all subtests to use the test protocol.
-    # Exporting to all subprocesses unconditionally to prevent ignoring waived
-    # state if a subtest is accidentally invoked with bt_assert, instead of
-    # bt.
-    BT_PROTOCOL=test
+    # Ask all sub-suites to use the suite protocol.
+    # Exporting to all subprocesses unconditionally to prevent losing detailed
+    # state if a sub-suite is accidentally invoked with bt_test, instead of
+    # bt_suite.
+    BT_PROTOCOL=suite
 }
 
-# Unset external test variables
+# Unset external test suite variables
 function _bt_cleanup()
 {
     unset BT_PROTOCOL \
@@ -95,7 +95,7 @@ function _bt_cleanup()
           BT_{,DONT_}{INCLUDE,UNSKIP,UNWAIVE}
 }
 
-# Finalize the test.
+# Finalize the test suite.
 # Args: status
 function _bt_fini()
 {
@@ -104,7 +104,7 @@ function _bt_fini()
 
     trap - EXIT
 
-    if [ $_BT_PROTOCOL == test ]; then
+    if [ $_BT_PROTOCOL == suite ]; then
         exit "$status"
     else
         _bt_log_status "$_BT_NAME_STACK" $status
@@ -163,7 +163,7 @@ function bt_path_filter()
     fi
 }
 
-# Exit the test immediately with PANICKED status, skipping (the rest of)
+# Exit the suite immediately with PANICKED status, skipping (the rest of)
 # teardown, optionally outputting a message to stderr.
 # Args: [message...]
 function bt_panic()
@@ -174,7 +174,7 @@ function bt_panic()
     _bt_fini $BT_STATUS_PANICKED
 }
 
-# Exit the test with ERRORED status, optionally outputting a message to
+# Exit the suite with ERRORED status, optionally outputting a message to
 # stderr.
 # Args: [message...]
 function bt_error()
@@ -185,7 +185,7 @@ function bt_error()
     exit 1
 }
 
-# Log current test status
+# Log an assertion status.
 # Args: name status
 function _bt_log_status()
 {
@@ -194,7 +194,7 @@ function _bt_log_status()
     echo "${name:+$name }`bt_status_to_str \"\$status\"`"
 }
 
-# Register test status
+# Register an assertion status.
 # Args: status
 function _bt_register_status()
 {
@@ -204,7 +204,7 @@ function _bt_register_status()
     eval "$count_var=$((count_var+1))"
 }
 
-# Setup a command assertion.
+# Setup a test execution.
 #
 # Args: [option...] [--] name
 #
@@ -213,7 +213,7 @@ function _bt_register_status()
 #   -w, --waived                    Mark assertion as waived.
 #   -e, --expected-status=STATUS    Expect STATUS exit status. Default is 0.
 #
-function bt_assert_begin()
+function bt_test_begin()
 {
     declare skipped=false
     declare waived=false
@@ -291,8 +291,8 @@ function bt_assert_begin()
     bt_attrs_push +o errexit
 }
 
-# Conclude a command assertion.
-function bt_assert_end()
+# Conclude a test execution.
+function bt_test_end()
 {
     # Grab the last status, first thing
     declare status=$?
@@ -330,7 +330,7 @@ function bt_assert_end()
     fi
 }
 
-# Assert a command.
+# Execute a test.
 #
 # Args: [option...] [--] name [command [arg...]]
 #
@@ -339,7 +339,7 @@ function bt_assert_end()
 #   -w, --waived                    Mark assertion as waived.
 #   -e, --expected-status=STATUS    Expect STATUS exit status. Default is 0.
 #
-function bt_assert()
+function bt_test()
 {
     declare skipped=false
     declare waived=false
@@ -401,14 +401,14 @@ function bt_assert()
     begin_args[${#begin_args[@]}]="--"
     begin_args[${#begin_args[@]}]="$name"
 
-    bt_assert_begin "${begin_args[@]}"
+    bt_test_begin "${begin_args[@]}"
     if ! $waived && ! $skipped; then
         "$@"
     fi
-    bt_assert_end
+    bt_test_end
 }
 
-# Setup a test assertion.
+# Setup a suite execution.
 #
 # Args: [option...] [--] name
 #
@@ -416,7 +416,7 @@ function bt_assert()
 #   -s, --skipped                   Mark assertion as skipped.
 #   -w, --waived                    Mark assertion as waived.
 #
-function bt_begin()
+function bt_suite_begin()
 {
     declare skipped=false
     declare waived=false
@@ -482,8 +482,8 @@ function bt_begin()
     bt_attrs_push +o errexit
 }
 
-# Conclude a test assertion.
-function bt_end()
+# Conclude a suite execution.
+function bt_suite_end()
 {
     # Grab the last status, first thing
     declare status=$?
@@ -513,7 +513,7 @@ function bt_end()
     fi
 }
 
-# Assert a test.
+# Execute a suite.
 #
 # Args: [option...] [--] name [command [arg...]]
 #
@@ -521,7 +521,7 @@ function bt_end()
 #   -s, --skipped                   Mark assertion as skipped.
 #   -w, --waived                    Mark assertion as waived.
 #
-function bt()
+function bt_suite()
 {
     declare skipped=false
     declare waived=false
@@ -570,15 +570,15 @@ function bt()
     begin_args[${#begin_args[@]}]="--"
     begin_args[${#begin_args[@]}]="$name"
 
-    bt_begin "${begin_args[@]}"
+    bt_suite_begin "${begin_args[@]}"
     if [ $# != 0 ]; then
         "$@"
     else
         (
-            . bt_init.sh
+            . bt_suite_init.sh
         )
     fi
-    bt_end
+    bt_suite_end
 }
 
 # Push a command to the teardown command stack.
@@ -640,16 +640,16 @@ function _bt_trap_exit()
     # else, if exiting with failure
     elif [ $status != 0 ] || [ $_BT_COUNT_ERRORED != 0 ]; then
         status=$BT_STATUS_ERRORED
-    # else, if there were failed tests
+    # else, if there were failed assertions
     elif [ $_BT_COUNT_FAILED != 0 ]; then
         status=$BT_STATUS_FAILED
-    # else, if there were waived tests
+    # else, if there were waived assertions
     elif [ $_BT_COUNT_WAIVED != 0 ]; then
         status=$BT_STATUS_WAIVED
-    # else, if there were passed tests
+    # else, if there were passed assertions
     elif [ $_BT_COUNT_PASSED != 0 ]; then
         status=$BT_STATUS_PASSED
-    # else, if there were skipped tests
+    # else, if there were skipped assertions
     elif [ $_BT_COUNT_SKIPPED != 0 ]; then
         status=$BT_STATUS_SKIPPED
     else

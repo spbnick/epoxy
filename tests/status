@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Test status handling test
+# Suite status handling test suite
 #
 # Copyright (c) 2012 Red Hat, Inc. All rights reserved.
 #
@@ -8,172 +8,172 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-. bt_init.sh
+. bt_suite_init.sh
 
-# Verify an exit status assertion
+# Test an exit status assertion
 # Args: status_suffix name
-# Input: test script
-function a()
+# Input: test suite script without bt_suite_init.sh sourcing
+function t()
 {
     declare -r name="$1"
     declare -r status_suffix="$2"
     declare -r status_name="BT_STATUS_`echo $status_suffix | tr a-z A-Z`"
 
-    bt_assert_begin -e "${!status_name}" "$name"; (
-        . bt_assert_init.sh
+    bt_test_begin -e "${!status_name}" "$name"; (
+        . bt_test_init.sh
         {
-            echo ". bt_init.sh"
+            echo ". bt_suite_init.sh"
             cat
-        } | BT_PROTOCOL=test bash >/dev/null || exit $?
-    ); bt_assert_end
+        } | BT_PROTOCOL=suite bash >/dev/null || exit $?
+    ); bt_test_end
 }
 
-a empty PASSED <<<"
+t empty PASSED <<<"
 "
 
-bt_begin setup; (
-    . bt_init.sh
+bt_suite_begin setup; (
+    . bt_suite_init.sh
 
-    bt_begin one; (
-        . bt_init.sh
-        a ok      PASSED    <<<"true"
-        a fail    ERRORED   <<<"false"
-    ); bt_end
+    bt_suite_begin one; (
+        . bt_suite_init.sh
+        t ok      PASSED    <<<"true"
+        t fail    ERRORED   <<<"false"
+    ); bt_suite_end
 
-    bt_begin two; (
-        . bt_init.sh
-        a fail_fail       ERRORED   <<<"false;  false"
-        a fail_ok         ERRORED   <<<"false;  true"
-        a ok_fail         ERRORED   <<<"true;   false"
-        a ok_ok           PASSED    <<<"true;   true"
-    ); bt_end
-); bt_end
+    bt_suite_begin two; (
+        . bt_suite_init.sh
+        t fail_fail       ERRORED   <<<"false;  false"
+        t fail_ok         ERRORED   <<<"false;  true"
+        t ok_fail         ERRORED   <<<"true;   false"
+        t ok_ok           PASSED    <<<"true;   true"
+    ); bt_suite_end
+); bt_suite_end
 
-bt_begin teardown; (
-    . bt_init.sh
+bt_suite_begin teardown; (
+    . bt_suite_init.sh
 
-    bt_begin one; (
-        . bt_init.sh
-        a ok      PASSED    <<<"bt_teardown_push true"
-        a fail    PANICKED  <<<"bt_teardown_push false"
-    ); bt_end
+    bt_suite_begin one; (
+        . bt_suite_init.sh
+        t ok      PASSED    <<<"bt_teardown_push true"
+        t fail    PANICKED  <<<"bt_teardown_push false"
+    ); bt_suite_end
 
-    bt_begin two; (
-        . bt_init.sh
-        a fail_fail       PANICKED  <<<"
+    bt_suite_begin two; (
+        . bt_suite_init.sh
+        t fail_fail       PANICKED  <<<"
             bt_teardown_push false; bt_teardown_push false"
-        a fail_ok         PANICKED  <<<"
+        t fail_ok         PANICKED  <<<"
             bt_teardown_push false; bt_teardown_push true"
-        a ok_fail         PANICKED  <<<"
+        t ok_fail         PANICKED  <<<"
             bt_teardown_push true;  bt_teardown_push false"
-        a ok_ok           PASSED    <<<"
+        t ok_ok           PASSED    <<<"
             bt_teardown_push true;  bt_teardown_push true"
-    ); bt_end
-); bt_end
+    ); bt_suite_end
+); bt_suite_end
 
-bt_begin setup_teardown; (
-    . bt_init.sh
-    a ok_ok       PASSED    <<<"true;   bt_teardown_push true"
-    a fail_ok     ERRORED   <<<"false;  bt_teardown_push true"
-    a ok_fail     PANICKED  <<<"true;   bt_teardown_push false"
-    a fail_fail   ERRORED   <<<"false;  bt_teardown_push false"
-); bt_end
+bt_suite_begin setup_teardown; (
+    . bt_suite_init.sh
+    t ok_ok       PASSED    <<<"true;   bt_teardown_push true"
+    t fail_ok     ERRORED   <<<"false;  bt_teardown_push true"
+    t ok_fail     PANICKED  <<<"true;   bt_teardown_push false"
+    t fail_fail   ERRORED   <<<"false;  bt_teardown_push false"
+); bt_suite_end
 
-bt_begin teardown_setup; (
-    . bt_init.sh
-    a ok_ok       PASSED    <<<"bt_teardown_push true;  true"
-    a fail_ok     PANICKED  <<<"bt_teardown_push false; true"
-    a ok_fail     ERRORED   <<<"bt_teardown_push true;  false"
-    a fail_fail   PANICKED  <<<"bt_teardown_push false; false"
-); bt_end
+bt_suite_begin teardown_setup; (
+    . bt_suite_init.sh
+    t ok_ok       PASSED    <<<"bt_teardown_push true;  true"
+    t fail_ok     PANICKED  <<<"bt_teardown_push false; true"
+    t ok_fail     ERRORED   <<<"bt_teardown_push true;  false"
+    t fail_fail   PANICKED  <<<"bt_teardown_push false; false"
+); bt_suite_end
 
-bt_begin assert; (
-    . bt_init.sh
+bt_suite_begin test; (
+    . bt_suite_init.sh
 
-    a no_args   ABORTED <<<"bt_assert" 2>/dev/null
+    t no_args   ABORTED <<<"bt_test" 2>/dev/null
 
-    bt_begin options; (
-        . bt_init.sh
-        a none                  PASSED  <<<"bt_assert               1"
-        a w                     WAIVED  <<<"bt_assert -w            1"
-        a waived                WAIVED  <<<"bt_assert --waived      1"
-        a s                     SKIPPED <<<"bt_assert -s            1"
-        a skipped               SKIPPED <<<"bt_assert --skipped     1"
-        a e0                    PASSED  <<<"bt_assert -e0           1   true"
-        a e1                    PASSED  <<<"bt_assert -e1           1   false"
-        a expected_eq_0         PASSED  <<<"bt_assert --expected=0  1   true"
-        a expected_eq_1         PASSED  <<<"bt_assert --expected=1  1   false"
-    ); bt_end
+    bt_suite_begin options; (
+        . bt_suite_init.sh
+        t none                  PASSED  <<<"bt_test               1"
+        t w                     WAIVED  <<<"bt_test -w            1"
+        t waived                WAIVED  <<<"bt_test --waived      1"
+        t s                     SKIPPED <<<"bt_test -s            1"
+        t skipped               SKIPPED <<<"bt_test --skipped     1"
+        t e0                    PASSED  <<<"bt_test -e0           1   true"
+        t e1                    PASSED  <<<"bt_test -e1           1   false"
+        t expected_eq_0         PASSED  <<<"bt_test --expected=0  1   true"
+        t expected_eq_1         PASSED  <<<"bt_test --expected=1  1   false"
+    ); bt_suite_end
 
-    bt_begin one; (
-        . bt_init.sh
-        a empty                 PASSED  <<<"bt_assert       1"
-        a empty_waived          WAIVED  <<<"bt_assert -w    1"
-        a empty_skipped         SKIPPED <<<"bt_assert -s    1"
-        a empty_waived_skipped  SKIPPED <<<"bt_assert -w -s 1"
-        a ok                    PASSED  <<<"bt_assert       1 true"
-        a ok_waived             WAIVED  <<<"bt_assert -w    1 true"
-        a ok_skipped            SKIPPED <<<"bt_assert -s    1 true"
-        a ok_waived_skipped     SKIPPED <<<"bt_assert -w -s 1 true"
-        a failed                FAILED  <<<"bt_assert       1 false"
-        a failed_waived         WAIVED  <<<"bt_assert -w    1 false"
-        a failed_waived_skipped SKIPPED <<<"bt_assert -w -s 1 false"
-        a failed_skipped        SKIPPED <<<"bt_assert -s    1 false"
-    ); bt_end
+    bt_suite_begin one; (
+        . bt_suite_init.sh
+        t empty                 PASSED  <<<"bt_test       1"
+        t empty_waived          WAIVED  <<<"bt_test -w    1"
+        t empty_skipped         SKIPPED <<<"bt_test -s    1"
+        t empty_waived_skipped  SKIPPED <<<"bt_test -w -s 1"
+        t ok                    PASSED  <<<"bt_test       1 true"
+        t ok_waived             WAIVED  <<<"bt_test -w    1 true"
+        t ok_skipped            SKIPPED <<<"bt_test -s    1 true"
+        t ok_waived_skipped     SKIPPED <<<"bt_test -w -s 1 true"
+        t failed                FAILED  <<<"bt_test       1 false"
+        t failed_waived         WAIVED  <<<"bt_test -w    1 false"
+        t failed_waived_skipped SKIPPED <<<"bt_test -w -s 1 false"
+        t failed_skipped        SKIPPED <<<"bt_test -s    1 false"
+    ); bt_suite_end
 
-    bt_begin two; (
-        . bt_init.sh
-        a fail_fail       FAILED    <<<"
-            bt_assert       1 false;    bt_assert       2 false"
-        a fail_waive      FAILED    <<<"
-            bt_assert       1 false;    bt_assert -w    2 true"
-        a fail_ok         FAILED    <<<"
-            bt_assert       1 false;    bt_assert       2 true"
+    bt_suite_begin two; (
+        . bt_suite_init.sh
+        t fail_fail       FAILED    <<<"
+            bt_test       1 false;    bt_test       2 false"
+        t fail_waive      FAILED    <<<"
+            bt_test       1 false;    bt_test -w    2 true"
+        t fail_ok         FAILED    <<<"
+            bt_test       1 false;    bt_test       2 true"
 
-        a waive_fail      FAILED    <<<"
-            bt_assert -w    1 true;     bt_assert       2 false"
-        a waive_waive     WAIVED    <<<"
-            bt_assert -w    1 true;     bt_assert -w    2 true"
-        a waive_ok        WAIVED    <<<"
-            bt_assert -w    1 true;     bt_assert -w    2 true"
+        t waive_fail      FAILED    <<<"
+            bt_test -w    1 true;     bt_test       2 false"
+        t waive_waive     WAIVED    <<<"
+            bt_test -w    1 true;     bt_test -w    2 true"
+        t waive_ok        WAIVED    <<<"
+            bt_test -w    1 true;     bt_test -w    2 true"
 
-        a ok_fail         FAILED    <<<"
-            bt_assert       1 true;     bt_assert       2 false"
-        a ok_waive        WAIVED    <<<"
-            bt_assert       1 true;     bt_assert -w    2 true"
-        a ok_ok           PASSED    <<<"
-            bt_assert       1 true;     bt_assert       2 true"
-    ); bt_end
-); bt_end
+        t ok_fail         FAILED    <<<"
+            bt_test       1 true;     bt_test       2 false"
+        t ok_waive        WAIVED    <<<"
+            bt_test       1 true;     bt_test -w    2 true"
+        t ok_ok           PASSED    <<<"
+            bt_test       1 true;     bt_test       2 true"
+    ); bt_suite_end
+); bt_suite_end
 
-bt_begin test; (
-    . bt_init.sh
+bt_suite_begin suite; (
+    . bt_suite_init.sh
 
-    bt_begin one; (
-        . bt_init.sh
-        bt_begin executable; (
-            . bt_init.sh
-            a empty         PASSED    <<<"bt       1"
-            a empty_waived  WAIVED    <<<"bt -w    1"
-        ); bt_end
+    bt_suite_begin one; (
+        . bt_suite_init.sh
+        bt_suite_begin executable; (
+            . bt_suite_init.sh
+            t empty         PASSED    <<<"bt_suite       1"
+            t empty_waived  WAIVED    <<<"bt_suite -w    1"
+        ); bt_suite_end
 
-        bt_begin inline; (
-            . bt_init.sh
-            a empty         PASSED      <<<"
-                bt_begin 1; ( . bt_init.sh; ); bt_end"
-            a passed        PASSED      <<<"
-                bt_begin 1; ( . bt_init.sh; bt_assert 1 true; ); bt_end"
-            a waived        WAIVED      <<<"
-                bt_begin 1; ( . bt_init.sh; bt_assert -w 1; ); bt_end"
-            a failed        FAILED      <<<"
-                bt_begin 1; ( . bt_init.sh; bt_assert 1 false; ); bt_end"
-            a errored       ERRORED     <<<"
-                bt_begin 1; ( . bt_init.sh; false; ); bt_end"
-            a paniced       PANICKED    <<<"
-                bt_begin 1; ( . bt_init.sh; bt_teardown_push false; ); bt_end"
-            a aborted       ABORTED     <<<"
-                bt_begin 1; ( . bt_init.sh; bt_abort; ); bt_end"
-        ); bt_end
-    ); bt_end
+        bt_suite_begin inline; (
+            . bt_suite_init.sh
+            t empty         PASSED      <<<"
+                bt_suite_begin 1; ( . bt_suite_init.sh; ); bt_suite_end"
+            t passed        PASSED      <<<"
+                bt_suite_begin 1; ( . bt_suite_init.sh; bt_test 1 true; ); bt_suite_end"
+            t waived        WAIVED      <<<"
+                bt_suite_begin 1; ( . bt_suite_init.sh; bt_test -w 1; ); bt_suite_end"
+            t failed        FAILED      <<<"
+                bt_suite_begin 1; ( . bt_suite_init.sh; bt_test 1 false; ); bt_suite_end"
+            t errored       ERRORED     <<<"
+                bt_suite_begin 1; ( . bt_suite_init.sh; false; ); bt_suite_end"
+            t paniced       PANICKED    <<<"
+                bt_suite_begin 1; ( . bt_suite_init.sh; bt_teardown_push false; ); bt_suite_end"
+            t aborted       ABORTED     <<<"
+                bt_suite_begin 1; ( . bt_suite_init.sh; bt_abort; ); bt_suite_end"
+        ); bt_suite_end
+    ); bt_suite_end
 
-); bt_end
+); bt_suite_end
