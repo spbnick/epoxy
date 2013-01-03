@@ -1,0 +1,68 @@
+#!/usr/bin/env lua
+--
+-- Tag and mix lines from several files
+--
+-- Copyright (c) 2012 Red Hat, Inc. All rights reserved.
+--
+-- This copyrighted material is made available to anyone wishing
+-- to use, modify, copy, or redistribute it subject to the terms
+-- and conditions of the GNU General Public License version 2.
+
+local posix = require("posix")
+
+local function mix(source_list, output)
+    local read_size = 1024
+    local fd_state  = {}
+
+    for _, source in ipairs(source_list) do
+        local tag, path = source:match("^([^:]+):(.*)$")
+        if tag == nil then
+            path = source
+        end
+
+        local fd, err = posix.open(path, {'RDONLY'})
+        if fd == nil then
+            error(err)
+        end
+
+        fd_state[fd] = {events = {IN = true},
+                        pfx = tag and tag .. " " or "",
+                        buf = ""}
+    end
+
+    while next(fd_state) do
+        posix.poll(fd_state, -1)
+        for fd, state in pairs(fd_state) do
+            if state.revents.IN or state.revents.HUP then
+                local buf, err = posix.read(fd, read_size)
+                if buf == nil then
+                    error(err)
+                elseif #buf == 0 then
+                    if #state.buf ~= 0 then
+                        posix.write(output,
+                                    state.pfx .. state.buf .. "\n")
+                    end
+                    posix.close(fd)
+                    fd_state[fd] = nil
+                else
+                    state.buf = (state.buf .. buf):
+                                    gsub("[^\n]*\n",
+                                         function (line)
+                                            posix.write(output,
+                                                        state.pfx .. line)
+                                            return ""
+                                         end)
+                end
+            end
+        end
+    end
+end
+
+local ok, err = pcall(mix, arg, posix.fileno(io.stdout))
+
+if ok then
+    os.exit(0)
+else
+    io.stderr:write(err)
+    os.exit(1)
+end

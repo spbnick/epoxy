@@ -14,6 +14,19 @@ declare -r _BT_SH=
 . bt_status.sh
 . bt_glob.sh
 
+# Original stdout FD
+declare -r BT_STDOUT_FD=4
+# Original stderr FD
+declare -r BT_STDERR_FD=5
+# Log struct message output FD
+declare -r BT_LOG_STRUCT_FD=6
+# Log stderr message output FD
+declare -r BT_LOG_STDERR_FD=7
+# Log stdout message output FD
+declare -r BT_LOG_STDOUT_FD=8
+# Log trace message output FD
+declare -r BT_LOG_TRACE_FD=9
+
 # List of inter-suite environment variables.
 declare -a _BT_EXPORT_LIST=()
 
@@ -43,8 +56,18 @@ bt_export _BT_SKIPPED
 # "Waived" flag - exit assertion shell immediately, if "true".
 bt_export _BT_WAIVED
 
+# Temporary directory
+bt_export BT_TMPDIR
+
+# If "true", the log setup was done
+bt_export _BT_LOG_SETUP
+
 # Protocol for this suite ("generic", or "suite")
 declare _BT_PROTOCOL
+
+# If "true", the temporary directory was created by this suite
+declare _BT_TMPDIR_OWNER
+
 # Skipped assertion counter
 declare _BT_COUNT_SKIPPED
 # Passed assertion counter
@@ -64,6 +87,50 @@ declare _BT_COUNT_ABORTED
 declare -a _BT_TEARDOWN_ARGC
 # Teardown command argv array
 declare -a _BT_TEARDOWN_ARGV
+
+# Setup test suite logging.
+function _bt_init_log()
+{
+    declare -r -a tag_list=(struct stderr stdout trace)
+    declare tag_idx
+    declare lc_tag
+    declare uc_tag
+
+    declare fifo_idx=0
+    declare fifo_path
+    declare fifo_fd_var
+    declare fifo_fd
+    declare -a fifo_path_list=()
+
+    declare redirs=""
+    declare mix_args=""
+
+    # Create FIFOs, collect log-mixing arguments, collect FIFO redirections
+    for tag_idx in "${!tag_list[@]}"; do
+        lc_tag="${tag_list[tag_idx]}"
+        uc_tag=`tr a-z A-Z <<<$lc_tag`
+        fifo_fd_var="BT_LOG_${uc_tag}_FD"
+        fifo_fd="${!fifo_fd_var}"
+        fifo_path="$BT_TMPDIR/$lc_tag.fifo"
+
+        mkfifo "$fifo_path"
+
+        # Put fifo path into an array element to be referenced during eval
+        fifo_path_list[tag_idx]="$fifo_path"
+        redirs="$redirs $fifo_fd>\"\${fifo_path_list[$tag_idx]}\""
+        mix_args="$mix_args \"$uc_tag:\${fifo_path_list[$tag_idx]}\""
+    done
+
+    # Add stdout and stderr redirections
+    redirs="$redirs 1>&$BT_LOG_STDOUT_FD 2>&$BT_LOG_STDERR_FD"
+
+    # Move original stdout and stderr
+    eval "exec $BT_STDOUT_FD>&1- $BT_STDERR_FD>&2-"
+    # Start log line-mixing process
+    eval "bt_line_mix $mix_args >/dev/fd/$BT_STDOUT_FD &"
+    # Setup redirections
+    eval "exec $redirs"
+}
 
 # Initialize the test suite.
 function _bt_init()
@@ -100,6 +167,23 @@ function _bt_init()
     # state if a sub-suite is accidentally invoked with bt_test, instead of
     # bt_suite.
     BT_PROTOCOL=suite
+
+    # Create temporary directory, if none specified
+    if [ -z "${BT_TMPDIR+set}" ]; then
+        BT_TMPDIR=`mktemp -d -t bt.XXXXXXXXXX`
+        _BT_TMPDIR_OWNER=true
+    else
+        _BT_TMPDIR_OWNER=false
+    fi
+
+    # Setup logging, if not done yet
+    bt_abort_assert bt_bool_is_valid "${_BT_LOG_SETUP-false}"
+    if ! ${_BT_LOG_SETUP-false}; then
+        _bt_init_log
+        _BT_LOG_SETUP=true
+    fi
+
+    echo "ENTER $_BT_NAME_STACK" >/dev/fd/$BT_LOG_STRUCT_FD
 }
 
 # Unset external test suite variables
@@ -112,18 +196,28 @@ function _bt_cleanup()
 # Args: status
 function _bt_fini()
 {
-    declare -r status="$1"
+    declare status="$1"
     bt_abort_assert bt_status_is_valid "$status"
 
     trap - EXIT
 
-    if [ $_BT_PROTOCOL == suite ]; then
-        exit "$status"
-    else
-        _bt_log_status "$_BT_NAME_STACK" $status
-        [ "$status" -le $BT_STATUS_WAIVED ]
-        exit
+    echo "EXIT  $_BT_NAME_STACK `bt_status_to_str $status`" \
+         >/dev/fd/$BT_LOG_STRUCT_FD
+
+    if [ $_BT_PROTOCOL == generic ]; then
+        if [ "$status" -le $BT_STATUS_WAIVED ]; then
+            status=0
+        else
+            status=1
+        fi
     fi
+
+    # Remove temporary directory, if created by this suite
+    if $_BT_TMPDIR_OWNER; then
+        rm -R "$BT_TMPDIR"
+    fi
+
+    exit "$status"
 }
 
 # Match either a final or a partial assertion path against a filter - a pair
@@ -300,6 +394,8 @@ function bt_test_begin()
     # Remember expected status - to be compared to the command exit status
     _BT_EXPECTED_STATUS="$expected_status"
 
+    echo "BEGIN $_BT_NAME_STACK" >/dev/fd/$BT_LOG_STRUCT_FD
+
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
 }
@@ -309,11 +405,8 @@ function bt_test_end()
 {
     # Grab the last status, first thing
     declare status=$?
-    declare name="$_BT_NAME_STACK"
     # Restore errexit state
     bt_attrs_pop
-    # "Exit" the assertion
-    bt_strstack_pop _BT_NAME_STACK /
 
     bt_abort_assert [ ${_BT_EXPECTED_STATUS+set} ]
     if [ $status == "$_BT_EXPECTED_STATUS" ]; then
@@ -336,7 +429,10 @@ function bt_test_end()
     _BT_SKIPPED=false
 
     bt_abort_assert bt_status_is_valid $status
-    _bt_log_status "$name" $status
+    echo "END   $_BT_NAME_STACK `bt_status_to_str $status`" \
+         >/dev/fd/$BT_LOG_STRUCT_FD
+    # "Exit" the assertion
+    bt_strstack_pop _BT_NAME_STACK /
     _bt_register_status $status
     if [ $status -ge $BT_STATUS_PANICKED ]; then
         _bt_fini $status
@@ -491,6 +587,8 @@ function bt_suite_begin()
     # immediately
     _BT_WAIVED="$waived"
 
+    echo "BEGIN $_BT_NAME_STACK" >/dev/fd/$BT_LOG_STRUCT_FD
+
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
 }
@@ -500,11 +598,8 @@ function bt_suite_end()
 {
     # Grab the last status, first thing
     declare status=$?
-    declare name="$_BT_NAME_STACK"
     # Restore errexit state
     bt_attrs_pop
-    # "Exit" the assertion
-    bt_strstack_pop _BT_NAME_STACK /
 
     bt_abort_assert [ ${_BT_WAIVED+set} ]
     if $_BT_WAIVED; then
@@ -519,7 +614,10 @@ function bt_suite_end()
     _BT_SKIPPED=false
 
     bt_abort_assert bt_status_is_valid $status
-    _bt_log_status "$name" $status
+    echo "END   $_BT_NAME_STACK `bt_status_to_str $status`" \
+         >/dev/fd/$BT_LOG_STRUCT_FD
+    # "Exit" the assertion
+    bt_strstack_pop _BT_NAME_STACK /
     _bt_register_status $status
     if [ $status -ge $BT_STATUS_PANICKED ]; then
         _bt_fini $status
