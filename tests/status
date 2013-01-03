@@ -169,7 +169,7 @@ bt_suite_begin suite; (
                 bt_suite_begin 1; ( . bt_suite_init.sh; bt_test 1 false; ); bt_suite_end"
             t errored       ERRORED     <<<"
                 bt_suite_begin 1; ( . bt_suite_init.sh; false; ); bt_suite_end"
-            t paniced       PANICKED    <<<"
+            t panicked      PANICKED    <<<"
                 bt_suite_begin 1; ( . bt_suite_init.sh; bt_teardown_push false; ); bt_suite_end"
             t aborted       ABORTED     <<<"
                 bt_suite_begin 1; ( . bt_suite_init.sh; bt_abort; ); bt_suite_end"
