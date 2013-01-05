@@ -33,9 +33,13 @@ local function mix(source_list, output)
 
     fd_state[output] = {events = {OUT = true}}
 
-    -- While there are other descriptors except output
-    while next(fd_state, next(fd_state)) do
-        posix.poll(fd_state, -1)
+    -- While there are other descriptors except output or
+    -- there is anything to output
+    while next(fd_state, next(fd_state)) or next(line_list) do
+        local nfds, err = posix.poll(fd_state, -1)
+        if nfds < 0 then
+            error(err)
+        end
         for fd, state in pairs(fd_state) do
             if fd == output and #line_list ~= 0 and
                (state.revents.OUT or state.revents.ERR) then
