@@ -31,7 +31,7 @@ local function mix(source_list, output)
                         buf = ""}
     end
 
-    fd_state[output] = {events = {OUT = true}}
+    fd_state[output] = {events = {}}
 
     -- While there are other descriptors except output or
     -- there is anything to output
@@ -50,6 +50,9 @@ local function mix(source_list, output)
                     line_list[1] = line_list:sub(len)
                 else
                     table.remove(line_list, 1)
+                    if #line_list == 0 then
+                        fd_state[output].events.OUT = nil
+                    end
                 end
             elseif fd ~= output and
                    (state.revents.IN or state.revents.HUP) then
@@ -71,6 +74,7 @@ local function mix(source_list, output)
                                          function (line)
                                             table.insert(line_list,
                                                          state.pfx .. line)
+                                            fd_state[output].events.OUT = true
                                             return ""
                                          end)
                 end
