@@ -1,0 +1,99 @@
+#!/usr/bin/env lua
+--
+-- Mix bash test log from output and log message files, with syncing
+--
+-- Copyright (c) 2013 Red Hat, Inc. All rights reserved.
+--
+-- This copyrighted material is made available to anyone wishing
+-- to use, modify, copy, or redistribute it subject to the terms
+-- and conditions of the GNU General Public License version 2.
+
+local posix = require("posix")
+
+local read_size = 4096
+
+local function flush(fd, desc)
+    if #desc.buf ~= 0 then
+        desc.line_func(desc.buf .. "\n", false)
+        desc.buf = ""
+    end
+end
+
+local function transfer(desc_map, fd)
+    local desc = desc_map[fd]
+
+    if desc == nil or not (desc.revents.IN or desc.revents.HUP) then
+        return false
+    else
+        local buf, errmsg = posix.read(fd, read_size)
+        if buf == nil then
+            error(errmsg)
+        elseif #buf == 0 then
+            flush(fd, desc)
+            desc_map[fd] = nil
+        else
+            -- TODO Limit amount of data buffered in desc.buf
+            desc.buf = (desc.buf .. buf):
+                            gsub("[^\n]*\n",
+                                 function (line)
+                                    desc.line_func(line, true)
+                                    return ""
+                                 end)
+        end
+        return true
+    end
+end
+
+local function mix(log_file, output_path, messages_path, sync_path)
+    local output_fd     = assert(posix.open(output_path,
+                                            {"RDONLY", "NONBLOCK"}))
+    local messages_fd   = assert(posix.open(messages_path,
+                                            {"RDONLY", "NONBLOCK"}))
+    local sync_fd       = assert(posix.open(sync_path, {"WRONLY"}))
+
+    local output_desc   = {events = {IN = true}, buf = "",
+                           line_func = function (line, complete)
+                                log_file:write("OUTPUT ", line)
+                           end}
+    local messages_desc = {events = {IN = true}, buf = "",
+                           line_func = function (line, complete)
+                                flush(output_fd, output_desc)
+                                log_file:write(line)
+                                if complete then
+                                    assert(posix.write(sync_fd, "\n"))
+                                end
+                           end}
+    local desc_map      = {[output_fd]      = output_desc,
+                           [messages_fd]    = messages_desc}
+
+    while next(desc_map) do
+        local nfds, errmsg = posix.poll(desc_map, -1)
+        if nfds < 0 then
+            error(errmsg)
+        end
+        if not transfer(desc_map, output_fd) then
+            transfer(desc_map, messages_fd)
+        end
+    end
+
+    posix.close(sync_fd)
+    posix.close(messages_fd)
+    posix.close(output_fd)
+end
+
+if #arg ~= 3 then
+    io.stderr:write("Invalid number of arguments\n")
+    io.stderr:write(("Usage: %s OUTPUT MESSAGES SYNC\n"):
+                        format(arg[0]:match("[^/]+$")))
+    os.exit(1)
+end
+
+io.stdout:setvbuf("line")
+local ok, errmsg = pcall(mix, io.stdout, unpack(arg))
+
+if ok then
+    os.exit(0)
+else
+    io.stderr:write(errmsg, "\n")
+    os.exit(1)
+end
