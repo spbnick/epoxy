@@ -16,7 +16,7 @@ function bt_glob_aborting()
 {
     declare status=0
     declare stderr
-    stderr=`bt_glob "\$@"` || status=$?
+    stderr=`bt_glob "\$@" 2>&1` || status=$?
     if [ "$status" != 0 ] && [ "$status" != 1 ]; then
         bt_abort "$stderr"
     fi
