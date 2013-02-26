@@ -15,10 +15,9 @@
 trap - SIGABRT
 
 bt_abort_assert bt_bool_is_valid "${_BT_SKIPPED-false}"
-bt_abort_assert bt_bool_is_valid "${_BT_WAIVED-false}"
 
-# If entering a skipped or waived assertion shell
-if ${_BT_SKIPPED:-false} || ${_BT_WAIVED-false}; then
+# If entering a skipped assertion shell
+if ${_BT_SKIPPED:-false}; then
     exit 0
 fi
 

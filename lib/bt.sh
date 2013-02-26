@@ -562,7 +562,7 @@ function bt_test()
     begin_args[${#begin_args[@]}]="$name"
 
     bt_test_begin "${begin_args[@]}"
-    if ! $waived && ! $disabled; then
+    if ! $disabled; then
         "$@"
     fi
     bt_test_end
