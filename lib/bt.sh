@@ -46,8 +46,8 @@ bt_export BT_PROTOCOL
 # NOTE: using export instead of declare -x as a bash 3.x bug workaround
 # Glob pattern matching assertions to (not) include in the run
 bt_export BT_INCLUDE BT_DONT_INCLUDE
-# Glob pattern matching assertions to (not) remove skipped status from
-bt_export BT_UNSKIP BT_DONT_UNSKIP
+# Glob pattern matching assertions to (not) remove disabled status from
+bt_export BT_ENABLE BT_DONT_ENABLE
 # Glob pattern matching assertions to (not) remove waived status from
 bt_export BT_UNWAIVE BT_DONT_UNWAIVE
 
@@ -368,7 +368,7 @@ function _bt_register_status()
 # Args: [option...] [--] name
 #
 # Options:
-#   -s, --skipped                   Mark assertion as skipped.
+#   -d, --disabled                  Mark assertion as disabled.
 #   -w, --waived                    Mark assertion as waived.
 #   -e, --expected-status=STATUS    Expect STATUS exit status. Default is 0.
 #
@@ -378,14 +378,14 @@ function bt_test_begin()
     declare waived=false
     declare expected_status=0
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +swe: \
-                         --longoptions skipped,waived,expected-status: \
+                         --options +dwe: \
+                         --longoptions disabled,waived,expected-status: \
                          -- "$@"`
     eval set -- "$args"
 
     while true; do
         case "$1" in
-            -s|--skipped)
+            -d|--disabled)
                 skipped=true
                 shift
                 ;;
@@ -420,8 +420,8 @@ function bt_test_begin()
     # "Enter" the assertion
     bt_strstack_push _BT_NAME_STACK / "$name"
 
-    # Disable skipping if the path matches "UNSKIP" filter
-    if bt_path_filter "$_BT_NAME_STACK" true UNSKIP false; then
+    # Disable skipping if the path matches "ENABLE" filter
+    if bt_path_filter "$_BT_NAME_STACK" true ENABLE false; then
         skipped=false
     fi
 
@@ -495,26 +495,26 @@ function bt_test_end()
 # Args: [option...] [--] name [command [arg...]]
 #
 # Options:
-#   -s, --skipped                   Mark assertion as skipped.
+#   -d, --disabled                  Mark assertion as disabled.
 #   -w, --waived                    Mark assertion as waived.
 #   -e, --expected-status=STATUS    Expect STATUS exit status. Default is 0.
 #
 function bt_test()
 {
-    declare skipped=false
+    declare disabled=false
     declare waived=false
     declare expected_status=0
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +swe: \
-                         --longoptions skipped,waived,expected-status: \
+                         --options +dwe: \
+                         --longoptions disabled,waived,expected-status: \
                          -- "$@"`
     declare -a begin_args=()
     eval set -- "$args"
 
     while true; do
         case "$1" in
-            -s|--skipped)
-                skipped=true
+            -d|--disabled)
+                disabled=true
                 shift
                 ;;
             -w|--waived)
@@ -545,8 +545,8 @@ function bt_test()
     declare -r name="$1"
     shift
 
-    if $skipped; then
-        begin_args[${#begin_args[@]}]="--skipped"
+    if $disabled; then
+        begin_args[${#begin_args[@]}]="--disabled"
     fi
 
     if $waived; then
@@ -562,7 +562,7 @@ function bt_test()
     begin_args[${#begin_args[@]}]="$name"
 
     bt_test_begin "${begin_args[@]}"
-    if ! $waived && ! $skipped; then
+    if ! $waived && ! $disabled; then
         "$@"
     fi
     bt_test_end
@@ -573,7 +573,7 @@ function bt_test()
 # Args: [option...] [--] name
 #
 # Options:
-#   -s, --skipped                   Mark assertion as skipped.
+#   -d, --disabled                  Mark assertion as disabled.
 #   -w, --waived                    Mark assertion as waived.
 #
 function bt_suite_begin()
@@ -581,14 +581,14 @@ function bt_suite_begin()
     declare skipped=false
     declare waived=false
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +sw \
-                         --longoptions skipped,waived \
+                         --options +dw \
+                         --longoptions disabled,waived \
                          -- "$@"`
     eval set -- "$args"
 
     while true; do
         case "$1" in
-            -s|--skipped)
+            -d|--disabled)
                 skipped=true
                 shift
                 ;;
@@ -615,8 +615,8 @@ function bt_suite_begin()
     # "Enter" the assertion
     bt_strstack_push _BT_NAME_STACK / "$name"
 
-    # Disable skipping if path matches "UNSKIP" filter
-    if bt_path_filter "$_BT_NAME_STACK" false UNSKIP false; then
+    # Disable skipping if path matches "ENABLE" filter
+    if bt_path_filter "$_BT_NAME_STACK" false ENABLE false; then
         skipped=false
     fi
 
@@ -679,25 +679,25 @@ function bt_suite_end()
 # Args: [option...] [--] name [command [arg...]]
 #
 # Options:
-#   -s, --skipped                   Mark assertion as skipped.
+#   -d, --disabled                  Mark assertion as disabled.
 #   -w, --waived                    Mark assertion as waived.
 #
 function bt_suite()
 {
-    declare skipped=false
+    declare disabled=false
     declare waived=false
     declare -a opts=()
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +sw \
-                         --longoptions skipped,waived \
+                         --options +dw \
+                         --longoptions disabled,waived \
                          -- "$@"`
     declare -a begin_args=()
     eval set -- "$args"
 
     while true; do
         case "$1" in
-            -s|--skipped)
-                skipped=true
+            -d|--disabled)
+                disabled=true
                 shift
                 ;;
             -w|--waived)
@@ -720,8 +720,8 @@ function bt_suite()
     declare -r name="$1"
     shift
 
-    if $skipped; then
-        begin_args[${#begin_args[@]}]="--skipped"
+    if $disabled; then
+        begin_args[${#begin_args[@]}]="--disabled"
     fi
 
     if $waived; then

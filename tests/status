@@ -97,8 +97,8 @@ bt_suite_begin test; (
         t none                  PASSED  <<<"bt_test               1"
         t w                     WAIVED  <<<"bt_test -w            1"
         t waived                WAIVED  <<<"bt_test --waived      1"
-        t s                     SKIPPED <<<"bt_test -s            1"
-        t skipped               SKIPPED <<<"bt_test --skipped     1"
+        t s                     SKIPPED <<<"bt_test -d            1"
+        t skipped               SKIPPED <<<"bt_test --disabled    1"
         t e0                    PASSED  <<<"bt_test -e0           1   true"
         t e1                    PASSED  <<<"bt_test -e1           1   false"
         t expected_eq_0         PASSED  <<<"bt_test --expected=0  1   true"
@@ -109,16 +109,16 @@ bt_suite_begin test; (
         . bt_suite_init.sh
         t empty                 PASSED  <<<"bt_test       1"
         t empty_waived          WAIVED  <<<"bt_test -w    1"
-        t empty_skipped         SKIPPED <<<"bt_test -s    1"
-        t empty_waived_skipped  SKIPPED <<<"bt_test -w -s 1"
+        t empty_skipped         SKIPPED <<<"bt_test -d    1"
+        t empty_waived_skipped  SKIPPED <<<"bt_test -w -d 1"
         t ok                    PASSED  <<<"bt_test       1 true"
         t ok_waived             WAIVED  <<<"bt_test -w    1 true"
-        t ok_skipped            SKIPPED <<<"bt_test -s    1 true"
-        t ok_waived_skipped     SKIPPED <<<"bt_test -w -s 1 true"
+        t ok_skipped            SKIPPED <<<"bt_test -d    1 true"
+        t ok_waived_skipped     SKIPPED <<<"bt_test -w -d 1 true"
         t failed                FAILED  <<<"bt_test       1 false"
         t failed_waived         WAIVED  <<<"bt_test -w    1 false"
-        t failed_waived_skipped SKIPPED <<<"bt_test -w -s 1 false"
-        t failed_skipped        SKIPPED <<<"bt_test -s    1 false"
+        t failed_waived_skipped SKIPPED <<<"bt_test -w -d 1 false"
+        t failed_skipped        SKIPPED <<<"bt_test -d    1 false"
     ); bt_suite_end
 
     bt_suite_begin two; (
