@@ -1,0 +1,28 @@
+FIRST RELEASE
+
+Requirements
+
+* Support RHEL5.x
+* Allow Beaker interaction.
+* Allow automatic uploading of test plans and test runs to tcms.
+
+Features
+
+* Support for separate framework and suite arguments.
+  Format: suite [framework_arg...] [-- [suite_arg...]]
+* Test skipping support using environment and command line.
+* Test waiving support using invocation option: waived tests are executed but
+  the result is WAIVED.
+* Test failure reason support: invocation option for specifying the reason the
+  test is failing, a Bug number, maybe. Output the reason on the STRUCT END
+  log line.
+* Test unwaiving support using environment and command line.
+* Test disabling support using invocation option.
+* Test enabling support using environment and command line.
+* Correct suite termination on SIGINT/SIGTERM.
+* Support for converting log to beakerlib log interactively.
+* Suite/test description support using invocation options. Put description in
+  the log.
+* Assertion name validation.
+* Suite and test construction validation.
+* Logging support. Output summary output to stdout by default.

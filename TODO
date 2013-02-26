@@ -1,0 +1,136 @@
+Add support for TERMINATED test status, meaning the suite was terminated with
+SIGINT or SIGTERM. Ignore SIGINT/SIGTERM in tests which are waiting for
+suites/tests to finish. Terminate the whole suite if a suite/test finishes
+with TERMINATED, similarly to panic.
+
+Add verification of the suite and test construction validity. E.g. check if
+shell initialization corresponds to the type of shell being entered, that it
+is done at exactly the right bash level, that any test command is being
+executed within appropriately-initialized shell, that appropriate bt_*end is
+called, etc.
+
+Think about adding options for specifying suite/test waiving/disabling
+reason.
+
+Consider implementing bt_glob_valid or bt_glob_is_valid for checking pattern
+validity. This might require pattern "compilation" and common library.
+
+Add proper logging and reporting support. Design logging protocol. Design log
+filtering tool supporting filtering by minimum message severity, test depth
+and height, and minimum test status severity. Develop several sinks: simple
+file writing sink, rhts logging sink, human-summary sink (for immediate
+console output).  Upon suite startup redirect all stdout to a tool which would
+format it for inclusion into the log, say with "STDOUT" tag, and pipe it to
+the log pipe.  Do the same for stderr with "STDERR" tag. Be cautious about
+trailing newlines.  Consider adding a special FD redirected to the log pipe
+just for test assertion explanations (like "expected 0, got 1", etc.).
+
+Consider distributing logging with tee and process substitution.
+Console logging should be done to stdout. Stderr should receive only
+pre-logging error messages and out-of-band framework errors.
+
+Consider adding status explanations to the human-summary sink.
+
+Set default minimum test status severity for filtering to PASSED, so SKIPPED
+tests are omitted.
+
+Think about making this set of logging tags:
+STRUCT - test entrance and exit with appropriate subtags, say "ENTER" and
+         "EXIT", or "START" and "FINISH", or maybe "BEGIN" and "END", mmm?
+         Like the last one.
+STATUS  - resulting test status - should be included into EXIT STRUCT
+                                  messages, maybe?
+STDERR  - test stderr lines
+STDOUT  - test stdout lines
+TRACE   - test tracing lines, consider disabling tracing if these are filtered
+          out
+
+There should only be such top level tags as make sense to be separate
+filtering levels.
+
+Consider specifying full test path in each STRUCT log message.
+
+Consider adding an option for specifying suite/test description.
+
+Do suite/test argument parsing with a separate function call only.
+Do separate argument parsing functions for suites and tests.
+Maybe name them bt_suite_read_args and bt_test_read_args?
+
+BTW, can we disallow spaces in assertion names? That way there would be
+no problem in separating test path patterns with whitespace. And STRUCT BEGIN
+message can contain description after the name. Can be useful, yes.
+
+How about this log structure:
+STRUCT BEGIN                      # - this is redundant
+       END status [reason]        # - shall we replace this with
+                                      something else? A special section
+                                      in the log file? After an empty
+                                      line? Or shall we use an empty
+                                      line to separate runs in a log
+                                      file? Then a run log should finish
+                                      with an empty line and summary
+                                      should be marked some other way.
+                                      How about one dash on a line?
+       BEGIN name [description]
+       END name status [reason]
+STDERR line
+STDOUT line
+TRACE line
+
+The default severity (?) for the log file sink would be STDOUT.
+The rhts log and human summary sinks would only need STRUCT.
+
+Disallow slashes in assertion names.
+
+Oh, BTW, newlines are allowed in XML attributes, so it's safe to specify
+BT_INCLUDE and other whitespace-separated list variable values.
+
+Consider adding support for disabling bt_abort_assert execution to improve
+performance. Measure the difference.
+
+Add support for remote test execution. Make the shell stdout be the log pipe
+specified through the appropriate environment variables.
+
+Add support for entering interactive mode before/after a specific or a failed
+test.
+
+Use the following log structure:
+STRUCT BEGIN path [description]
+       ENTER path
+       EXIT  path status
+       END   path status
+OUTPUT line
+TRACE line
+
+Think how to quote assertion paths in the logs.
+
+Waived suites and tests should be executed fully, but the results should be
+ignored and replaced with WAIVED. This would help keep the code of waived
+assertions working, will normalize the log structure and allow structure
+extraction, say for the purpose of transferring to tcms.
+
+Think of having this command line interface for test suites:
+suite [framework_arg...] [-- [suite_arg...]]
+Have bt_suite_init.sh parse $@ and put suite arguments into, say,
+BT_SUITE_ARGS, then clear $@.
+
+Consider renaming ERRORED, PANICKED and ABORTED statuses to ERROR_SETUP,
+ERROR_CLEANUP and ERROR_ASSERTION, or something, to simplify status
+interpretation for new users.
+
+Consider adding abbreviated interface support:
+    . bt_si.sh
+    . bt.ti.sh
+    bt_t
+    bt_tb
+    bt_te
+    bt_s
+    bt_sb
+    bt_se
+
+Consider printing backtrace with most specific message last, especially WRT
+automatically reporting failure reason.
+
+Think if it is appropriate to waive ERROR and worse statuses. Probably not,
+this way an ERRORED suite would fail to report all tests, assertion tree would
+be incomplete and this would be left undetected.
