@@ -14,16 +14,20 @@ declare -r _BT_SH=
 . bt_status.sh
 . bt_glob.sh
 
+# First FD reserved for the user
+declare -r BT_USER_FD1=3
+# Second FD reserved for the user
+declare -r BT_USER_FD2=4
 # Original stdout FD
 declare -r BT_STDOUT_FD=5
 # Original stderr FD
 declare -r BT_STDERR_FD=6
-# Log stderr message output FD
-declare -r BT_LOG_STDERR_FD=7
-# Log stdout message output FD
-declare -r BT_LOG_STDOUT_FD=8
-# Log other message output FD
-declare -r BT_LOG_OTHER_FD=9
+# Log stdout and stderr output FD
+declare -r BT_LOG_OUTPUT_FD=7
+# Log messages output FD
+declare -r BT_LOG_MESSAGES_FD=8
+# Log sync input FD
+declare -r BT_LOG_SYNC_FD=9
 
 # List of inter-suite environment variables.
 declare -a _BT_EXPORT_LIST=()
@@ -89,27 +93,36 @@ declare -a _BT_TEARDOWN_ARGV
 # Setup test suite logging.
 function _bt_init_log()
 {
-    declare -r stdout_fifo="$BT_TMPDIR/stdout.fifo"
-    declare -r stderr_fifo="$BT_TMPDIR/stderr.fifo"
-    declare -r other_fifo="$BT_TMPDIR/other.fifo"
+    declare -r output_fifo="$BT_TMPDIR/output.fifo"
+    declare -r messages_fifo="$BT_TMPDIR/messages.fifo"
+    declare -r sync_fifo="$BT_TMPDIR/sync.fifo"
 
-    mkfifo "$stdout_fifo"
-    mkfifo "$stderr_fifo"
-    mkfifo "$other_fifo"
+    mkfifo "$output_fifo"
+    mkfifo "$messages_fifo"
+    mkfifo "$sync_fifo"
 
     # Move original stdout and stderr
     eval "exec $BT_STDOUT_FD>&1- $BT_STDERR_FD>&2-"
 
-    # Start log line-mixing process
-    bt_line_mix "STDOUT:$stdout_fifo" "STDERR:$stderr_fifo" ":$other_fifo" \
-                >/dev/fd/$BT_STDOUT_FD 2>/dev/fd/$BT_STDERR_FD &
+    # Start log-mixing process
+    bt_log_mix "$output_fifo" "$messages_fifo" "$sync_fifo" \
+                0</dev/null 1>&$BT_STDOUT_FD 2>&$BT_STDERR_FD &
 
-    # Setup redirections
-    eval "exec $BT_LOG_STDOUT_FD>\"\$stdout_fifo\" \
-               $BT_LOG_STDERR_FD>\"\$stderr_fifo\" \
-               $BT_LOG_OTHER_FD>\"\$other_fifo\" \
-               1>&$BT_LOG_STDOUT_FD \
-               2>&$BT_LOG_STDERR_FD"
+    # Open FIFO's and setup redirections
+    eval "exec $BT_LOG_OUTPUT_FD>\"\$output_fifo\" \
+               $BT_LOG_MESSAGES_FD>\"\$messages_fifo\" \
+               $BT_LOG_SYNC_FD<\"\$sync_fifo\" \
+               1>&$BT_LOG_OUTPUT_FD \
+               2>&$BT_LOG_OUTPUT_FD"
+}
+
+# Log a message
+# Args: [message_word...]
+function _bt_log()
+{
+    declare newline
+    echo "$@" >&$BT_LOG_MESSAGES_FD
+    read -u $BT_LOG_SYNC_FD newline
 }
 
 # Initialize the test suite.
@@ -163,7 +176,7 @@ function _bt_init()
         _BT_LOG_SETUP=true
     fi
 
-    echo "STRUCT ENTER $_BT_NAME_STACK" >/dev/fd/$BT_LOG_OTHER_FD
+    _bt_log "STRUCT ENTER $_BT_NAME_STACK"
 }
 
 # Unset external test suite variables
@@ -181,8 +194,7 @@ function _bt_fini()
 
     trap - EXIT
 
-    echo "STRUCT EXIT  $_BT_NAME_STACK `bt_status_to_str $status`" \
-         >/dev/fd/$BT_LOG_OTHER_FD
+    _bt_log "STRUCT EXIT  $_BT_NAME_STACK `bt_status_to_str $status`"
 
     if [ $_BT_PROTOCOL == generic ]; then
         if [ "$status" -le $BT_STATUS_WAIVED ]; then
@@ -374,7 +386,7 @@ function bt_test_begin()
     # Remember expected status - to be compared to the command exit status
     _BT_EXPECTED_STATUS="$expected_status"
 
-    echo "STRUCT BEGIN $_BT_NAME_STACK" >/dev/fd/$BT_LOG_OTHER_FD
+    _bt_log "STRUCT BEGIN $_BT_NAME_STACK"
 
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
@@ -409,8 +421,7 @@ function bt_test_end()
     _BT_SKIPPED=false
 
     bt_abort_assert bt_status_is_valid $status
-    echo "STRUCT END   $_BT_NAME_STACK `bt_status_to_str $status`" \
-         >/dev/fd/$BT_LOG_OTHER_FD
+    _bt_log "STRUCT END   $_BT_NAME_STACK `bt_status_to_str $status`"
     # "Exit" the assertion
     bt_strstack_pop _BT_NAME_STACK /
     _bt_register_status $status
@@ -567,7 +578,7 @@ function bt_suite_begin()
     # immediately
     _BT_WAIVED="$waived"
 
-    echo "STRUCT BEGIN $_BT_NAME_STACK" >/dev/fd/$BT_LOG_OTHER_FD
+    _bt_log "STRUCT BEGIN $_BT_NAME_STACK"
 
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
@@ -594,8 +605,7 @@ function bt_suite_end()
     _BT_SKIPPED=false
 
     bt_abort_assert bt_status_is_valid $status
-    echo "STRUCT END   $_BT_NAME_STACK `bt_status_to_str $status`" \
-         >/dev/fd/$BT_LOG_OTHER_FD
+    _bt_log "STRUCT END   $_BT_NAME_STACK `bt_status_to_str $status`"
     # "Exit" the assertion
     bt_strstack_pop _BT_NAME_STACK /
     _bt_register_status $status

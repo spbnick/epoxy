@@ -41,14 +41,14 @@ function t()
         declare result_log
         declare status=0
         result_log=`eval "
-              exec 3>&1- 4>&2-
+              exec $BT_USER_FD1>&1- $BT_USER_FD2>&2-
               bt_log_mix \"\$OUTPUT_FIFO\" \
                          \"\$MESSAGES_FIFO\" \
                          \"\$SYNC_FIFO\" \
                          0</dev/null 1>&3 2>&4 &
               exec 0<\"\$SYNC_FIFO\" 1>\"\$OUTPUT_FIFO\" 2>\"\$MESSAGES_FIFO\"
               $expr
-              exec 0<&- 1>&- 2>&- 1>&3- 2>&4-
+              exec 0<&- 1>&- 2>&- 1>&$BT_USER_FD1- 2>&$BT_USER_FD2-
               wait %1
         "` || status=$?
         if [ $status != 0 ]; then
