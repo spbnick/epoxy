@@ -29,6 +29,9 @@ declare -r BT_LOG_MESSAGES_FD=8
 # Log sync input FD
 declare -r BT_LOG_SYNC_FD=9
 
+# Suite command-line arguments
+declare -a BT_SUITE_ARGS=()
+
 # List of inter-suite environment variables.
 declare -a _BT_EXPORT_LIST=()
 
@@ -130,6 +133,103 @@ function _bt_shell_init()
     fi
 }
 
+# Output usage information
+function _bt_usage()
+{
+    echo "\
+Usage: `basename \"\$0\"` [OPTION]... [PATTERN]... [-- [SUITE_ARG]...]
+Execute test suite.
+
+Arguments:
+
+    PATTERN                 Verify assertions matching PATTERN.
+
+Options:
+
+    -h, --help              Output this help message and exit.
+
+    -i, --include=PATTERN   Verify assertions matching PATTERN.
+    -e, --exclude=PATTERN,
+    --dont-include=PATTERN  Don't verify assertions matching PATTERN.
+
+    -u, --unwaive=PATTERN   Remove \"waived\" status from assertions matching
+                            PATTERN.
+    --dont-unwaive=PATTERN  Don't remove \"waived\" status from assertions
+                            matching PATTERN.
+
+    -e, --enable=PATTERN    Enable assertions matching PATTERN.
+    --dont-enable=PATTERN   Don't enable assertions matching PATTERN.
+
+Any arguments specified after \"--\" are passed to the suite.
+"
+}
+
+# Parse command line arguments, extracting framework-specific arguments and
+# storing suite arguments in BT_SUITE_ARGS array.
+# Args: [arg...]
+function _bt_parse_args()
+{
+    # Collect framework arguments
+    declare args=()
+    while [ $# != 0 ]; do
+        if [ "$1" == "--" ]; then
+            shift;
+            break;
+        fi
+        args[${#args[@]}]="$1"
+        shift
+    done
+
+    # Store suite arguments
+    BT_SUITE_ARGS=("$@")
+
+    # If there are no framework arguments
+    if [ "${#args[@]}" == 0 ]; then
+        return
+    fi
+
+    # Parse framework arguments
+    declare args_expr
+    args_expr=`getopt --name \`basename "\$0"\` \
+                      --options hi:e:u:e: \
+                      --longoptions help,include:,exclude:,dont-include: \
+                      --longoptions unwaive:dont-unwaive:enable:dont-enable: \
+                      -- "${args[@]}"`
+    eval set -- "$args_expr"
+
+    # Read framework option arguments
+    while true; do
+        case "$1" in
+            -h|--help)
+                _bt_usage; exit 0;;
+            -i|--include)
+                bt_glob_var_or BT_INCLUDE       "$2"; shift 2;;
+            -e|--exclude|--dont-include)
+                bt_glob_var_or BT_DONT_INCLUDE  "$2"; shift 2;;
+            -u|--unwaive)
+                bt_glob_var_or BT_UNWAIVE       "$2"; shift 2;;
+            --dont-unwaive)
+                bt_glob_var_or BT_DONT_UNWAIVE  "$2"; shift 2;;
+            -e|--enable)
+                bt_glob_var_or BT_ENABLE        "$2"; shift 2;;
+            --dont-enable)
+                bt_glob_var_or BT_DONT_ENABLE   "$2"; shift 2;;
+            --) shift; break;;
+            *) echo "Unknown option: $1" >&2; exit 127 ;;
+        esac
+    done
+
+    # Read framework positional arguments
+    while [ $# != 0 ]; do
+        if [ "$1" == "--" ]; then
+            shift
+            break
+        fi
+        bt_glob_var_or BT_INCLUDE "$1"
+        shift
+    done
+}
+
 # Setup test suite logging.
 function _bt_init_log()
 {
@@ -165,11 +265,17 @@ function _bt_log()
     read -u $BT_LOG_SYNC_FD newline
 }
 
-# Initialize a suite shell.
+# Initialize a suite shell, parse command line arguments, extracting
+# framework-specific arguments and storing suite arguments in BT_SUITE_ARGS
+# array.
+# Args: [cmdline_arg...]
 function bt_suite_init()
 {
     # Initialize a generic shell
     _bt_shell_init
+
+    # Parse command line arguments
+    _bt_parse_args "$@"
 
     # Verify BT_PROTOCOL value
     if [ -n "${BT_PROTOCOL:-}" ] &&

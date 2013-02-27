@@ -23,4 +23,20 @@ function bt_glob_aborting()
     return $status
 }
 
+# Assign a union of a pattern variable contents and another pattern to the
+# pattern variable.
+# Args: _pvar _p
+function bt_glob_var_or()
+{
+    declare -r _pvar="$1"
+    declare -r _p="$2"
+    declare _union
+    if [ -n "${!_pvar+set}" ]; then
+        _union="@(`bt_glob_escape --set-item \"\${!_pvar}\"`|$_p)"
+    else
+        _union="$_p"
+    fi
+    eval "$_pvar=\"\$_union\""
+}
+
 fi # _BT_GLOB_SH

@@ -9,7 +9,7 @@
 # and conditions of the GNU General Public License version 2.
 
 . bt.sh
-bt_suite_init
+bt_suite_init "$@"
 
 function test_glob()
 {
