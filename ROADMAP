@@ -13,7 +13,5 @@ TODO
 * Test failure reason support: invocation option for specifying the reason the
   test is failing, a Bug number, maybe. Output the reason on the STRUCT END
   log line.
-* Suite/test description support using invocation options. Put description in
-  the log.
 * Correct suite termination on SIGINT/SIGTERM.
 * Suite and test construction validation.

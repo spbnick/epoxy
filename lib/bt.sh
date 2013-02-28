@@ -555,15 +555,19 @@ function _bt_register_status()
 #   -d, --disabled                  Mark assertion as disabled.
 #   -w, --waived                    Mark assertion as waived.
 #   -e, --expected-status=STATUS    Expect STATUS exit status. Default is 0.
+#   -b, --brief=TEXT                Attach TEXT brief description to the
+#                                   assertion.
 #
 function bt_test_begin()
 {
     declare skipped=false
     declare waived=false
     declare expected_status=0
+    declare brief=
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +dwe: \
+                         --options +dwe:b: \
                          --longoptions disabled,waived,expected-status: \
+                         --longoptions brief: \
                          -- "$@"`
     eval set -- "$args"
 
@@ -583,6 +587,13 @@ function bt_test_begin()
                       "$expected_status" == *[^" "0-9]* ]]; then
                     bt_abort "Invalid -e/--expected-status option value: $2"
                 fi
+                shift 2
+                ;;
+            -b|--brief)
+                if ! bt_text_is_valid "$2"; then
+                    bt_abort "Invalid -b/--brief option value: $2"
+                fi
+                brief="$2"
                 shift 2
                 ;;
             --)
@@ -630,7 +641,7 @@ function bt_test_begin()
     # Remember expected status - to be compared to the command exit status
     _BT_EXPECTED_STATUS="$expected_status"
 
-    _bt_log "STRUCT BEGIN '$_BT_NAME_STACK'"
+    _bt_log "STRUCT BEGIN '$_BT_NAME_STACK'${brief:+ $brief}"
 
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
@@ -683,15 +694,19 @@ function bt_test_end()
 #   -d, --disabled                  Mark assertion as disabled.
 #   -w, --waived                    Mark assertion as waived.
 #   -e, --expected-status=STATUS    Expect STATUS exit status. Default is 0.
+#   -b, --brief=TEXT                Attach TEXT brief description to the
+#                                   assertion.
 #
 function bt_test()
 {
     declare disabled=false
     declare waived=false
     declare expected_status=0
+    declare brief=
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +dwe: \
+                         --options +dwe:b: \
                          --longoptions disabled,waived,expected-status: \
+                         --longoptions brief: \
                          -- "$@"`
     declare -a begin_args=()
     eval set -- "$args"
@@ -712,6 +727,13 @@ function bt_test()
                       "$expected_status" == *[^" "0-9]* ]]; then
                     bt_abort "Invalid -e/--expected-status option value: $2"
                 fi
+                shift 2
+                ;;
+            -b|--brief)
+                if ! bt_text_is_valid "$2"; then
+                    bt_abort "Invalid -b/--brief option value: $2"
+                fi
+                brief="$2"
                 shift 2
                 ;;
             --)
@@ -744,6 +766,11 @@ function bt_test()
         begin_args[${#begin_args[@]}]="$expected_status"
     fi
 
+    if [ -n "$brief" ]; then
+        begin_args[${#begin_args[@]}]="--brief"
+        begin_args[${#begin_args[@]}]="$brief"
+    fi
+
     begin_args[${#begin_args[@]}]="--"
     begin_args[${#begin_args[@]}]="$name"
 
@@ -761,14 +788,17 @@ function bt_test()
 # Options:
 #   -d, --disabled                  Mark assertion as disabled.
 #   -w, --waived                    Mark assertion as waived.
+#   -b, --brief=TEXT                Attach TEXT brief description to the
+#                                   assertion.
 #
 function bt_suite_begin()
 {
     declare skipped=false
     declare waived=false
+    declare brief=
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +dw \
-                         --longoptions disabled,waived \
+                         --options +dwb: \
+                         --longoptions disabled,waived,brief: \
                          -- "$@"`
     eval set -- "$args"
 
@@ -781,6 +811,13 @@ function bt_suite_begin()
             -w|--waived)
                 waived=true
                 shift
+                ;;
+            -b|--brief)
+                if ! bt_text_is_valid "$2"; then
+                    bt_abort "Invalid -b/--brief option value: $2"
+                fi
+                brief="$2"
+                shift 2
                 ;;
             --)
                 shift
@@ -824,7 +861,7 @@ function bt_suite_begin()
     # Export "waived" flag, so bt_suite_end could ignore assertion status.
     _BT_WAIVED="$waived"
 
-    _bt_log "STRUCT BEGIN '$_BT_NAME_STACK'"
+    _bt_log "STRUCT BEGIN '$_BT_NAME_STACK'${brief:+ $brief}"
 
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
@@ -868,15 +905,18 @@ function bt_suite_end()
 # Options:
 #   -d, --disabled                  Mark assertion as disabled.
 #   -w, --waived                    Mark assertion as waived.
+#   -b, --brief=TEXT                Attach TEXT brief description to the
+#                                   assertion.
 #
 function bt_suite()
 {
     declare disabled=false
     declare waived=false
+    declare brief=
     declare -a opts=()
     declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +dw \
-                         --longoptions disabled,waived \
+                         --options +dwb: \
+                         --longoptions disabled,waived,brief: \
                          -- "$@"`
     declare -a begin_args=()
     eval set -- "$args"
@@ -890,6 +930,13 @@ function bt_suite()
             -w|--waived)
                 waived=true
                 shift
+                ;;
+            -b|--brief)
+                if ! bt_text_is_valid "$2"; then
+                    bt_abort "Invalid -b/--brief option value: $2"
+                fi
+                brief="$2"
+                shift 2
                 ;;
             --)
                 shift
@@ -914,6 +961,11 @@ function bt_suite()
 
     if $waived; then
         begin_args[${#begin_args[@]}]="--waived"
+    fi
+
+    if [ -n "$brief" ]; then
+        begin_args[${#begin_args[@]}]="--brief"
+        begin_args[${#begin_args[@]}]="$brief"
     fi
 
     begin_args[${#begin_args[@]}]="--"
