@@ -38,9 +38,6 @@ Consider adding abbreviated interface support:
     bt_tb
     bt_te
 
-Consider printing backtrace with most specific message last, especially WRT
-automatically reporting failure reason.
-
 Think of renaming "unwaiving" to "claiming".
 
 Convert tool executables to Python 2.4+ for better portability to RHEL5.

@@ -10,8 +10,5 @@ TODO
 
 * Logging support. Output summary output to stdout by default.
 * Support for converting log to beakerlib log interactively.
-* Test failure reason support: invocation option for specifying the reason the
-  test is failing, a Bug number, maybe. Output the reason on the STRUCT END
-  log line.
 * Correct suite termination on SIGINT/SIGTERM.
 * Suite and test construction validation.
