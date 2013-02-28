@@ -10,5 +10,4 @@ TODO
 
 * Logging support. Output summary output to stdout by default.
 * Support for converting log to beakerlib log interactively.
-* Correct suite termination on SIGINT/SIGTERM.
 * Suite and test construction validation.

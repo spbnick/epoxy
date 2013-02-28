@@ -244,9 +244,10 @@ function _bt_init_log()
     # Move original stdout and stderr
     eval "exec $BT_STDOUT_FD>&1- $BT_STDERR_FD>&2-"
 
-    # Start log-mixing process
-    bt_log_mix "$output_fifo" "$messages_fifo" "$sync_fifo" \
-                0</dev/null 1>&$BT_STDOUT_FD 2>&$BT_STDERR_FD &
+    # Start log-mixing process in a separate session and thus process group,
+    # so it doesn't get killed by signals sent to our process group.
+    setsid bt_log_mix "$output_fifo" "$messages_fifo" "$sync_fifo" \
+                      0</dev/null 1>&$BT_STDOUT_FD 2>&$BT_STDERR_FD &
 
     # Open FIFO's and setup redirections
     eval "exec $BT_LOG_OUTPUT_FD>\"\$output_fifo\" \
