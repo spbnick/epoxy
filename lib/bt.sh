@@ -384,6 +384,18 @@ function bt_name_is_valid()
     fi
 }
 
+# Check if an assertion descriptive text is valid.
+# Args: text
+function bt_text_is_valid()
+{
+    declare -r text="$1"
+    if [[ "$text" == *[[:cntrl:]]* ]]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
 # Match an assertion path against a negative pattern.
 # Args: pattern path
 function bt_path_match_negative()
