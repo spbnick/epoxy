@@ -8,7 +8,8 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-. bt_suite_init.sh
+. bt.sh
+bt_suite_init
 
 declare -r SUITE_TMPDIR=`mktemp -d -t bt_log_mix_test.XXXXXXXXXX`
 bt_teardown_push rm -R "$SUITE_TMPDIR"
@@ -37,7 +38,7 @@ function t()
                                 sed -ne 'x; /^-$/{x;p;x}; x; /^-$/x'`
 
     bt_test_begin "$name"; (
-        . bt_test_init.sh
+        bt_test_init
         declare result_log
         declare status=0
         result_log=`eval "

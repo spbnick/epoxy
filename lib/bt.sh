@@ -64,6 +64,9 @@ bt_export BT_TMPDIR
 # If "true", the log setup was done
 bt_export _BT_LOG_SETUP
 
+# Last initialized subshell depth
+declare _BT_SHELL_INIT_SUBSHELL
+
 # Protocol for this suite ("generic", or "suite")
 declare _BT_PROTOCOL
 
@@ -89,6 +92,43 @@ declare _BT_COUNT_ABORTED
 declare -a _BT_TEARDOWN_ARGC
 # Teardown command argv array
 declare -a _BT_TEARDOWN_ARGV
+
+# Initialize a (sub)shell.
+function _bt_shell_init()
+{
+    # Exit immediately, if a simple command exits with non-zero status
+    set -o errexit
+    # Pipe status is the status of the rightmost unsuccessful command
+    set -o pipefail
+    # Abort if expanding an unset variable
+    set -o nounset
+    # Enable extended debugging.
+    # Needed for DEBUG trap propagation and BASH_ARGV/BASH_ARGC.
+    shopt -s extdebug
+
+    if [ "$BASH_SUBSHELL" == "${_BT_SHELL_INIT_SUBSHELL:-}" ]; then
+        bt_abort "Re-initializing a (sub)shell"
+    fi
+
+    # Last initialized subshell depth
+    _BT_SHELL_INIT_SUBSHELL="$BASH_SUBSHELL"
+
+    # Set PID that bt_abort should send SIGABRT to - the PID of the (sub)shell
+    # being initialized, if can be retrieved
+    if [ -n "${BASHPID+set}" ]; then
+        BT_ABORT_PID="$BASHPID"
+    elif [ -r /proc/self/stat ]; then
+        declare discard=
+        read -r BT_ABORT_PID discard < /proc/self/stat
+    fi
+
+    bt_abort_assert bt_bool_is_valid "${_BT_SKIPPED-false}"
+
+    # If entering a skipped assertion shell
+    if ${_BT_SKIPPED:-false}; then
+        exit 0
+    fi
+}
 
 # Setup test suite logging.
 function _bt_init_log()
@@ -125,9 +165,12 @@ function _bt_log()
     read -u $BT_LOG_SYNC_FD newline
 }
 
-# Initialize the test suite.
-function _bt_init()
+# Initialize a suite shell.
+function bt_suite_init()
 {
+    # Initialize a generic shell
+    _bt_shell_init
+
     # Verify BT_PROTOCOL value
     if [ -n "${BT_PROTOCOL:-}" ] &&
        [ "$BT_PROTOCOL" != "generic" ] && [ "$BT_PROTOCOL" != "suite" ]; then
@@ -179,11 +222,22 @@ function _bt_init()
     _bt_log "STRUCT ENTER $_BT_NAME_STACK"
 }
 
-# Unset external test suite variables
-function _bt_cleanup()
+# Cleanup a suite shell.
+function bt_suite_cleanup()
 {
     unset -- "${_BT_EXPORT_LIST[@]}"
+    trap - SIGABRT
 }
+
+# Initialize a test shell.
+function bt_test_init()
+{
+    # Cleanup the possible inherited suite shell
+    bt_suite_cleanup
+    # Initialize a generic shell
+    _bt_shell_init
+}
+
 
 # Finalize the test suite.
 # Args: status
@@ -734,7 +788,7 @@ function bt_suite()
         "$@"
     else
         (
-            . bt_suite_init.sh
+            bt_suite_init
         )
     fi
     bt_suite_end

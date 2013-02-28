@@ -8,7 +8,8 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-. bt_suite_init.sh
+. bt.sh
+bt_suite_init
 
 bt_suite glob glob
 bt_suite glob_escape glob_escape
