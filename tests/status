@@ -161,20 +161,53 @@ bt_suite_begin suite; (
 
         bt_suite_begin inline; (
             bt_suite_init
-            t empty         PASSED      <<<"
-                bt_suite_begin 1; ( bt_suite_init; ); bt_suite_end"
-            t passed        PASSED      <<<"
-                bt_suite_begin 1; ( bt_suite_init; bt_test 1 true; ); bt_suite_end"
-            t waived        WAIVED      <<<"
-                bt_suite_begin 1; ( bt_suite_init; bt_test -w 1; ); bt_suite_end"
-            t failed        FAILED      <<<"
-                bt_suite_begin 1; ( bt_suite_init; bt_test 1 false; ); bt_suite_end"
-            t errored       ERRORED     <<<"
-                bt_suite_begin 1; ( bt_suite_init; false; ); bt_suite_end"
-            t panicked      PANICKED    <<<"
-                bt_suite_begin 1; ( bt_suite_init; bt_teardown_push false; ); bt_suite_end"
-            t aborted       ABORTED     <<<"
-                bt_suite_begin 1; ( bt_suite_init; bt_abort; ); bt_suite_end"
+
+            declare mask
+            declare opts
+            declare script
+            declare status
+            declare script_var
+            declare -r script_empty=""
+            declare -r script_skipped="bt_test -d 1"
+            declare -r script_passed="bt_test 1 true"
+            declare -r script_waived="bt_test -w 1"
+            declare -r script_failed="bt_test 1 false"
+            declare -r script_errored="false"
+            declare -r script_panicked="bt_teardown_push false"
+            declare -r script_aborted="bt_abort"
+
+            while read mask opts script status; do
+                script_var="script_$script"
+                t ${mask}_${script} $status <<<"
+                    bt_suite_begin $opts 1; (
+                        bt_suite_init
+                        ${!script_var}
+                    ); bt_suite_end"
+            done <<<"\
+                asis        --  empty       PASSED
+                asis        --  skipped     SKIPPED
+                asis        --  passed      PASSED
+                asis        --  waived      WAIVED
+                asis        --  failed      FAILED
+                asis        --  errored     ERRORED
+                asis        --  panicked    PANICKED
+                asis        --  aborted     ABORTED
+                waived      -w  empty       WAIVED
+                waived      -w  skipped     SKIPPED
+                waived      -w  passed      WAIVED
+                waived      -w  waived      WAIVED
+                waived      -w  failed      WAIVED
+                waived      -w  errored     ERRORED
+                waived      -w  panicked    PANICKED
+                waived      -w  aborted     ABORTED
+                disabled    -d  empty       SKIPPED
+                disabled    -d  skipped     SKIPPED
+                disabled    -d  passed      SKIPPED
+                disabled    -d  waived      SKIPPED
+                disabled    -d  failed      SKIPPED
+                disabled    -d  errored     SKIPPED
+                disabled    -d  panicked    SKIPPED
+                disabled    -d  aborted     SKIPPED"
         ); bt_suite_end
     ); bt_suite_end
 

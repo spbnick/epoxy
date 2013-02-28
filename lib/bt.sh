@@ -628,7 +628,8 @@ function bt_test_end()
     unset _BT_EXPECTED_STATUS
 
     bt_abort_assert [ ${_BT_WAIVED+set} ]
-    if $_BT_WAIVED; then
+    if $_BT_WAIVED &&
+        (($status >= $BT_STATUS_PASSED && $status <= $BT_STATUS_FAILED)); then
         status=$BT_STATUS_WAIVED
     fi
     _BT_WAIVED=false
@@ -811,7 +812,8 @@ function bt_suite_end()
     bt_attrs_pop
 
     bt_abort_assert [ ${_BT_WAIVED+set} ]
-    if $_BT_WAIVED; then
+    if $_BT_WAIVED &&
+        (($status >= $BT_STATUS_PASSED && $status <= $BT_STATUS_FAILED)); then
         status=$BT_STATUS_WAIVED
     fi
     _BT_WAIVED=false

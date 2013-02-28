@@ -114,7 +114,3 @@ Consider adding abbreviated interface support:
 
 Consider printing backtrace with most specific message last, especially WRT
 automatically reporting failure reason.
-
-Think if it is appropriate to waive ERROR and worse statuses. Probably not,
-this way an ERRORED suite would fail to report all tests, assertion tree would
-be incomplete and this would be left undetected.
