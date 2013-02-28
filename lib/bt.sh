@@ -325,7 +325,7 @@ function bt_suite_init()
         _BT_LOG_SETUP=true
     fi
 
-    _bt_log "STRUCT ENTER $_BT_NAME_STACK"
+    _bt_log "STRUCT ENTER '$_BT_NAME_STACK'"
 }
 
 # Cleanup a suite shell.
@@ -354,7 +354,7 @@ function _bt_fini()
 
     trap - EXIT
 
-    _bt_log "STRUCT EXIT  $_BT_NAME_STACK `bt_status_to_str $status`"
+    _bt_log "STRUCT EXIT  '$_BT_NAME_STACK' `bt_status_to_str $status`"
 
     if [ $_BT_PROTOCOL == generic ]; then
         if [ "$status" -le $BT_STATUS_WAIVED ]; then
@@ -605,7 +605,7 @@ function bt_test_begin()
     # Remember expected status - to be compared to the command exit status
     _BT_EXPECTED_STATUS="$expected_status"
 
-    _bt_log "STRUCT BEGIN $_BT_NAME_STACK"
+    _bt_log "STRUCT BEGIN '$_BT_NAME_STACK'"
 
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
@@ -641,7 +641,7 @@ function bt_test_end()
     _BT_SKIPPED=false
 
     bt_abort_assert bt_status_is_valid $status
-    _bt_log "STRUCT END   $_BT_NAME_STACK `bt_status_to_str $status`"
+    _bt_log "STRUCT END   '$_BT_NAME_STACK' `bt_status_to_str $status`"
     # "Exit" the assertion
     bt_strstack_pop _BT_NAME_STACK /
     _bt_register_status $status
@@ -797,7 +797,7 @@ function bt_suite_begin()
     # Export "waived" flag, so bt_suite_end could ignore assertion status.
     _BT_WAIVED="$waived"
 
-    _bt_log "STRUCT BEGIN $_BT_NAME_STACK"
+    _bt_log "STRUCT BEGIN '$_BT_NAME_STACK'"
 
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
@@ -825,7 +825,7 @@ function bt_suite_end()
     _BT_SKIPPED=false
 
     bt_abort_assert bt_status_is_valid $status
-    _bt_log "STRUCT END   $_BT_NAME_STACK `bt_status_to_str $status`"
+    _bt_log "STRUCT END   '$_BT_NAME_STACK' `bt_status_to_str $status`"
     # "Exit" the assertion
     bt_strstack_pop _BT_NAME_STACK /
     _bt_register_status $status
