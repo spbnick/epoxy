@@ -55,7 +55,7 @@ bt_export BT_UNWAIVE BT_DONT_UNWAIVE
 bt_export _BT_NAME_STACK
 # "Skipped" flag - exit assertion shell immediately, if "true".
 bt_export _BT_SKIPPED
-# "Waived" flag - exit assertion shell immediately, if "true".
+# "Waived" flag - ignore assertion status, if "true".
 bt_export _BT_WAIVED
 
 # Temporary directory
@@ -439,8 +439,7 @@ function bt_test_begin()
     # immediately
     _BT_SKIPPED="$skipped"
 
-    # Export "waived" flag, so if the command is waived it could exit
-    # immediately
+    # Export "waived" flag, so bt_test_end could ignore assertion status.
     _BT_WAIVED="$waived"
 
     # Remember expected status - to be compared to the command exit status
@@ -634,8 +633,7 @@ function bt_suite_begin()
     # immediately
     _BT_SKIPPED="$skipped"
 
-    # Export "waived" flag, so if the command is waived it could exit
-    # immediately
+    # Export "waived" flag, so bt_suite_end could ignore assertion status.
     _BT_WAIVED="$waived"
 
     _bt_log "STRUCT BEGIN $_BT_NAME_STACK"
