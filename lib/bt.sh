@@ -372,6 +372,18 @@ function _bt_fini()
     exit "$status"
 }
 
+# Check if an assertion name is valid.
+# Args: name
+function bt_name_is_valid()
+{
+    declare -r name="$1"
+    if [[ "$name" == *[^A-Za-z0-9_-]* ]]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
 # Match an assertion path against a negative pattern.
 # Args: pattern path
 function bt_path_match_negative()
@@ -576,6 +588,7 @@ function bt_test_begin()
     fi
     declare -r name="$1"
     shift
+    bt_abort_assert bt_name_is_valid "$name"
 
     # "Enter" the assertion
     bt_strstack_push _BT_NAME_STACK / "$name"
@@ -704,6 +717,7 @@ function bt_test()
     fi
     declare -r name="$1"
     shift
+    bt_abort_assert bt_name_is_valid "$name"
 
     if $disabled; then
         begin_args[${#begin_args[@]}]="--disabled"
@@ -771,6 +785,7 @@ function bt_suite_begin()
     fi
     declare -r name="$1"
     shift
+    bt_abort_assert bt_name_is_valid "$name"
 
     # "Enter" the assertion
     bt_strstack_push _BT_NAME_STACK / "$name"
@@ -879,6 +894,7 @@ function bt_suite()
     fi
     declare -r name="$1"
     shift
+    bt_abort_assert bt_name_is_valid "$name"
 
     if $disabled; then
         begin_args[${#begin_args[@]}]="--disabled"

@@ -115,7 +115,7 @@ bt_suite_begin literal; (
     ); bt_suite_end
 ); bt_suite_end
 
-bt_suite_begin "*"; (
+bt_suite_begin star; (
     bt_suite_init
     test_glob one_to_empty        "*"     ""  0 0 0
     test_glob one_to_non_empty    "*"     " " 0 0 0
@@ -157,7 +157,7 @@ bt_suite_begin extglob; (
             test_glob nested_pipe "@(@(\\|)|)" "|" 0 0 0
         ); bt_suite_end
     ); bt_suite_end
-    bt_suite_begin "@"; (
+    bt_suite_begin at; (
         bt_suite_init
         bt_suite_begin "one_pattern"; (
             bt_suite_init
@@ -178,7 +178,7 @@ bt_suite_begin extglob; (
             test_glob nonempty_to_none            "@(a|b)"    "c" 1 1 1
         ); bt_suite_end
     ); bt_suite_end
-    bt_suite_begin "*"; (
+    bt_suite_begin star; (
         bt_suite_init
         test_glob empty_to_empty      "*()"  ""       0 0 0
         test_glob empty_to_one        "*()"  "a"      1 1 0
@@ -189,7 +189,7 @@ bt_suite_begin extglob; (
         test_glob two_to_many         "*(ab)" "abab"  0 0 0
         test_glob two_to_many_part    "*(ab)" "aba"   1 0 0
     ); bt_suite_end
-    bt_suite_begin "?"; (
+    bt_suite_begin question; (
         bt_suite_init
         test_glob empty_to_empty      "?()"  ""       0 0 0
         test_glob empty_to_one        "?()"  "a"      1 1 0
@@ -200,7 +200,7 @@ bt_suite_begin extglob; (
         test_glob two_to_many         "?(ab)" "abab"  1 1 0
         test_glob two_to_one          "?(ab)" "a"     1 0 0
     ); bt_suite_end
-    bt_suite_begin "+"; (
+    bt_suite_begin plus; (
         bt_suite_init
         test_glob empty_to_empty      "+()"  ""       0 0 0
         test_glob empty_to_one        "+()"  "a"      1 1 0
@@ -211,7 +211,7 @@ bt_suite_begin extglob; (
         test_glob two_to_many         "+(ab)" "abab"  0 0 0
         test_glob two_to_many_part    "+(ab)" "aba"   1 0 0
     ); bt_suite_end
-    bt_suite_begin "!"; (
+    bt_suite_begin exclamation; (
         bt_suite_init
         test_glob empty_to_empty      "!()"  ""       1 0 1
         test_glob empty_to_one        "!()"  "a"      0 0 0

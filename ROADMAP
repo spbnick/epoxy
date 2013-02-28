@@ -16,5 +16,4 @@ TODO
 * Suite/test description support using invocation options. Put description in
   the log.
 * Correct suite termination on SIGINT/SIGTERM.
-* Assertion name validation.
 * Suite and test construction validation.

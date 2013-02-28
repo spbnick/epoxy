@@ -13,9 +13,10 @@ bt_suite_init "$@"
 
 function at()
 {
-    declare -r input="$1"
-    declare -r expected_output="$2"
-    bt_test_begin "$input"; (
+    declare -r name="$1"
+    declare -r input="$2"
+    declare -r expected_output="$3"
+    bt_test_begin "$name"; (
         bt_test_init
         declare -r output=`bt_glob_escape "\$input"`
         [ "$output" == "$expected_output" ]
@@ -24,9 +25,10 @@ function at()
 
 function asi()
 {
-    declare -r input="$1"
-    declare -r expected_output="$2"
-    bt_test_begin "$input"; (
+    declare -r name="$1"
+    declare -r input="$2"
+    declare -r expected_output="$3"
+    bt_test_begin "$name"; (
         bt_test_init
         declare -r output=`bt_glob_escape --set-item "\$input"`
         [ "$output" == "$expected_output" ]
@@ -67,36 +69,36 @@ bt_suite_begin options; (
 
 bt_suite_begin text; (
     bt_suite_init
-    at a a
-    at '\' '\\'
-    at '*' '\*'
-    at '?' '\?'
-    at '[' '\['
-    at ']' '\]'
-    at '@' '@'
-    at '@(' '\@('
-    at '+' '+'
-    at '+(' '\+('
-    at '!' '!'
-    at '!(' '\!('
+    at letter                   a a
+    at backslash                '\' '\\'
+    at star                     '*' '\*'
+    at question                 '?' '\?'
+    at open_bracket             '[' '\['
+    at close_bracket            ']' '\]'
+    at at                       '@' '@'
+    at at_open_paren            '@(' '\@('
+    at plus                     '+' '+'
+    at plus_open_paren          '+(' '\+('
+    at exclamation              '!' '!'
+    at exclamation_open_paren   '!(' '\!('
 ); bt_suite_end
 
 bt_suite_begin set_item; (
     bt_suite_init
-    asi a a
-    asi '\\' '\\'
-    asi '*' '*'
-    asi '?' '?'
-    asi '[' '['
-    asi ']' ']'
-    asi '@' '@'
-    asi '!' '!'
-    asi '(|)' '\(\|\)'
-    asi '?()' '?()'
-    asi '*()' '*()'
-    asi '+()' '+()'
-    asi '@()' '@()'
-    asi '!()' '!()'
-    asi '@((|))' '@((|))'
-    asi '@(@())' '@(@())'
+    asi letter              a a
+    asi backslash           '\\' '\\'
+    asi star                '*' '*'
+    asi question            '?' '?'
+    asi open_bracket        '[' '['
+    asi close_bracket       ']' ']'
+    asi at                  '@' '@'
+    asi exclamation         '!' '!'
+    asi alt_parens          '(|)' '\(\|\)'
+    asi question_empty      '?()' '?()'
+    asi star_empty          '*()' '*()'
+    asi plus_empty          '+()' '+()'
+    asi at_empty            '@()' '@()'
+    asi exclamation_empty   '!()' '!()'
+    asi at_alt_parens       '@((|))' '@((|))'
+    asi at_at               '@(@())' '@(@())'
 ); bt_suite_end

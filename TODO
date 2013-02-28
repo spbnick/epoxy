@@ -15,8 +15,6 @@ validity. This might require pattern "compilation" and common library.
 Add support for an option for specifying suite/test description, prohibit
 newlines in description.
 
-Disallow slashes in assertion names.
-
 Oh, BTW, newlines are allowed in XML attributes, so it's safe to specify
 BT_INCLUDE and other whitespace-separated list variable values.
 
