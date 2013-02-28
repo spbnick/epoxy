@@ -542,7 +542,8 @@ function _bt_log_status()
 function _bt_register_status()
 {
     declare -r status="$1"
-    declare -r status_str=`bt_status_to_str "\$status"`
+    declare status_str
+    status_str=`bt_status_to_str "\$status"`
     declare -r count_var="_BT_COUNT_$status_str"
     eval "$count_var=$((count_var+1))"
 }
@@ -564,11 +565,12 @@ function bt_test_begin()
     declare waived=false
     declare expected_status=0
     declare brief=
-    declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +dwe:b: \
-                         --longoptions disabled,waived,expected-status: \
-                         --longoptions brief: \
-                         -- "$@"`
+    declare args
+    args=`getopt --name ${FUNCNAME[0]} \
+                 --options +dwe:b: \
+                 --longoptions disabled,waived,expected-status: \
+                 --longoptions brief: \
+                 -- "$@"`
     eval set -- "$args"
 
     while true; do
@@ -703,11 +705,12 @@ function bt_test()
     declare waived=false
     declare expected_status=0
     declare brief=
-    declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +dwe:b: \
-                         --longoptions disabled,waived,expected-status: \
-                         --longoptions brief: \
-                         -- "$@"`
+    declare args
+    args=`getopt --name ${FUNCNAME[0]} \
+                 --options +dwe:b: \
+                 --longoptions disabled,waived,expected-status: \
+                 --longoptions brief: \
+                 -- "$@"`
     declare -a begin_args=()
     eval set -- "$args"
 
@@ -796,10 +799,11 @@ function bt_suite_begin()
     declare skipped=false
     declare waived=false
     declare brief=
-    declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +dwb: \
-                         --longoptions disabled,waived,brief: \
-                         -- "$@"`
+    declare args
+    args=`getopt --name ${FUNCNAME[0]} \
+                 --options +dwb: \
+                 --longoptions disabled,waived,brief: \
+                 -- "$@"`
     eval set -- "$args"
 
     while true; do
@@ -914,10 +918,11 @@ function bt_suite()
     declare waived=false
     declare brief=
     declare -a opts=()
-    declare args=`getopt --name ${FUNCNAME[0]} \
-                         --options +dwb: \
-                         --longoptions disabled,waived,brief: \
-                         -- "$@"`
+    declare args
+    args=`getopt --name ${FUNCNAME[0]} \
+                 --options +dwb: \
+                 --longoptions disabled,waived,brief: \
+                 -- "$@"`
     declare -a begin_args=()
     eval set -- "$args"
 
