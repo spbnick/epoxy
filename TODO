@@ -48,13 +48,7 @@ TRACE   - test tracing lines, consider disabling tracing if these are filtered
 There should only be such top level tags as make sense to be separate
 filtering levels.
 
-Consider specifying full test path in each STRUCT log message.
-
 Consider adding an option for specifying suite/test description.
-
-Do suite/test argument parsing with a separate function call only.
-Do separate argument parsing functions for suites and tests.
-Maybe name them bt_suite_read_args and bt_test_read_args?
 
 BTW, can we disallow spaces in assertion names? That way there would be
 no problem in separating test path patterns with whitespace. And STRUCT BEGIN
@@ -103,16 +97,6 @@ OUTPUT line
 TRACE line
 
 Think how to quote assertion paths in the logs.
-
-Waived suites and tests should be executed fully, but the results should be
-ignored and replaced with WAIVED. This would help keep the code of waived
-assertions working, will normalize the log structure and allow structure
-extraction, say for the purpose of transferring to tcms.
-
-Think of having this command line interface for test suites:
-suite [framework_arg...] [-- [suite_arg...]]
-Have bt_suite_init.sh parse $@ and put suite arguments into, say,
-BT_SUITE_ARGS, then clear $@.
 
 Consider renaming ERRORED, PANICKED and ABORTED statuses to ERROR_SETUP,
 ERROR_CLEANUP and ERROR_ASSERTION, or something, to simplify status
