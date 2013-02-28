@@ -1,4 +1,4 @@
-FIRST RELEASE
+RELEASE 1
 
 Requirements
 
@@ -20,9 +20,9 @@ Features
 * Test disabling support using invocation option.
 * Test enabling support using environment and command line.
 * Correct suite termination on SIGINT/SIGTERM.
-* Support for converting log to beakerlib log interactively.
 * Suite/test description support using invocation options. Put description in
   the log.
 * Assertion name validation.
 * Suite and test construction validation.
 * Logging support. Output summary output to stdout by default.
+* Support for converting log to beakerlib log interactively.
