@@ -529,15 +529,6 @@ function bt_error()
     exit 1
 }
 
-# Log an assertion status.
-# Args: name status
-function _bt_log_status()
-{
-    declare -r name="$1"
-    declare -r status="$2"
-    echo "${name:+$name }`bt_status_to_str \"\$status\"`"
-}
-
 # Register an assertion status.
 # Args: status
 function _bt_register_status()
