@@ -69,3 +69,9 @@ The default severity (?) for the log file sink would be OUTPUT.
 The rhts log and human summary sinks would only need STRUCT.
 Set default minimum test status severity for filtering to PASSED, so SKIPPED
 tests are omitted.
+
+Attach descriptions to external environment variables and add support for
+"--help-env" option, which prints them.
+
+Don't ignore skipped command exit status, verify that it skipped itself by
+checking for specific exit status.
