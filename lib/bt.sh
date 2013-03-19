@@ -339,10 +339,10 @@ function bt_suite_cleanup()
 # Initialize a test shell.
 function bt_test_init()
 {
-    # Cleanup the possible inherited suite shell
-    bt_suite_cleanup
     # Initialize a generic shell
     _bt_shell_init
+    # Cleanup the possible inherited suite shell
+    bt_suite_cleanup
 }
 
 
