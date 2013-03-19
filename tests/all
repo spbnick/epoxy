@@ -13,5 +13,10 @@ bt_suite_init "$@"
 
 bt_suite glob glob
 bt_suite glob_escape glob_escape
-bt_suite log_mix log_mix
+bt_suite_begin log; (
+    bt_suite_init
+    bt_suite mix log_mix
+    bt_suite filter log_filter
+    bt_suite cook log_cook
+); bt_suite_end
 bt_suite status status

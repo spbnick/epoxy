@@ -1,0 +1,336 @@
+#!/usr/bin/env lua
+--
+-- Filter bash test log
+--
+-- Copyright (c) 2013 Red Hat, Inc. All rights reserved.
+--
+-- This copyrighted material is made available to anyone wishing
+-- to use, modify, copy, or redistribute it subject to the terms
+-- and conditions of the GNU General Public License version 2.
+
+local level_map     = {
+    STRUCT      = 1,
+    OUTPUT      = 2,
+    TRACE       = 3,
+}
+
+local status_map    = {
+    SKIPPED     = 1,
+    PASSED      = 2,
+    WAIVED      = 3,
+    FAILED      = 4,
+    ERRORED     = 5,
+    PANICKED    = 6,
+    ABORTED     = 7,
+}
+
+local function usage(file)
+    file:write(([[
+Usage: %s [OPTION]...
+Filter bash test log.
+
+Options:
+    -h, --help          Output this help message and exit.
+    -l, --level=LEVEL   Output log messages with LEVEL maximum level only.
+    -t, --top=NUMBER    Output assertions with NUMBER depth minimum.
+                        Negative values count from the bottom.
+    -b, --bottom=NUMBER Output assertions with NUMBER depth maximum.
+                        Negative values count from the bottom.
+    -s, --status=STATUS Output assertions with STATUS or worse status only.
+
+Default options:
+    --level=TRACE --top=0 --bottom=-1 --status=SKIPPED
+
+]]):format(arg[0]:match("[^/]+$")))
+end
+
+---
+-- Parse command-line options.
+--
+-- @param arg_list  Command-line argument list.
+-- @param usage     Function outputting usage information to a file.
+-- @param opt_list  List of option descriptions.
+--                  Each option is an array with the following elements:
+--                      * short name
+--                      * long name
+--                      * "value required" flag
+--                      * apply function with the string value as the
+--                        argument, returning true if it was valid, false
+--                        otherwise.
+--
+local function parse_options(arg_list, usage, opt_list)
+    local arg_index = 1
+    -- For each command-line argument
+    while arg_index <= #arg_list do
+        local arg = arg_list[arg_index]
+        local name, value
+        -- For each option description
+        for _, opt in ipairs(opt_list) do
+            local short_name, long_name, req_val, apply = unpack(opt)
+
+            if arg == "-" .. short_name or arg == "--" .. long_name then
+                name = arg
+                if req_val then
+                    arg_index = arg_index + 1
+                    value = arg_list[arg_index]
+                    if value == nil then
+                        io.stderr:write(("Option %s has no value\n"):
+                                            format(name))
+                        usage(io.stderr)
+                        os.exit(1)
+                    end
+                end
+            else
+                name, value = arg:match("^(--" .. long_name .. ")=(.*)")
+                if not name then
+                    name, value = arg:match("^(-" .. short_name .. ")(.*)")
+                end
+                if name then
+                    if not req_val then
+                        io.stderr:write(
+                                    ("Option %s doesn't accept a value\n"):
+                                        format(name))
+                        usage(io.stderr)
+                        os.exit(1)
+                    end
+                end
+            end
+
+            if name then
+                if not apply(value) then
+                    io.stderr:write(("Invalid %s option value: %s\n"):
+                                        format(name, value))
+                    usage(io.stderr)
+                    os.exit(1)
+                end
+                break
+            end
+        end
+        if not name then
+            io.stderr:write(("Unknown option: %s\n"):format(arg))
+            usage(io.stderr)
+            os.exit(1)
+        end
+        arg_index = arg_index + 1
+    end
+end
+
+---
+-- Parse filter command-line options.
+--
+-- @param arg_list  Command-line argument list.
+--
+-- @return Filter parameters.
+--
+local function parse_filter_options(arg_list)
+    local filter = {
+        max_level   = level_map.TRACE,
+        min_depth   = 0,
+        max_depth   = -1,
+        min_status  = status_map.SKIPPED,
+    }
+
+    -- Parse command-line arguments
+    parse_options(
+        arg, usage,
+        {
+            {
+                "h", "help", false,
+                function ()
+                    usage(io.stdout)
+                    os.exit(0)
+                end,
+            }, {
+                "l", "level", true,
+                function (v)
+                    filter.max_level = level_map[v]
+                    return filter.max_level ~= nil
+                end,
+            }, {
+                "t", "top", true,
+                function (v)
+                    filter.min_depth = tonumber(v)
+                    return filter.min_depth ~= nil
+                end,
+            }, {
+                "b", "bottom", true,
+                function (v)
+                    filter.max_depth = tonumber(v)
+                    return filter.max_depth ~= nil
+                end,
+            }, {
+                "s", "status", true,
+                function (v)
+                    filter.min_status = status_map[v]
+                    return filter.min_status ~= nil
+                end,
+            }
+        }
+    )
+
+    return filter
+end
+
+---
+-- Attempt to determine if an assertion should be output.
+--
+-- @param f Filter.
+-- @param a Assertion.
+--
+-- @return True if the assertion should be output, false if not, and nil if it
+--         is unknown.
+--
+local function filter_assertion(f, a)
+    assert(type(f) == "table")
+    assert(type(a) == "table")
+
+    -- If it cannot be determined whether the line should be output or not:
+    -- if cannot decide yet if the assertion fits depth requirements:
+    -- if there can still be child assertions, which would affect height
+    if not (a.exit_status or a.end_status) and
+       (-- if it is not above maximum height yet (result may change)
+        f.min_depth < 0 and a.depth - a.max_depth >= f.min_depth + 1 or
+        -- if it is still below minimum height (result may change)
+        f.max_depth < 0 and a.depth - a.max_depth > f.max_depth + 1) or
+       -- if cannot decide yet if the assertion fits status requirements
+       f.min_status == status_map.PASSED and not a.got_line or
+       f.min_status > status_map.PASSED and not a.end_status then
+        return nil
+    end
+
+    -- Determine if the line should be output
+    return (f.min_depth >= 0 and a.depth >= f.min_depth or
+            a.depth - a.max_depth >= f.min_depth + 1) and
+           (a.depth <= f.max_depth or
+            f.max_depth < 0 and a.depth - a.max_depth <= f.max_depth + 1) and
+           (f.min_status == status_map.SKIPPED or
+            f.min_status == status_map.PASSED and a.got_line and
+                a.end_status ~= status_map.SKIPPED or
+            a.end_status >= f.min_status)
+end
+
+do
+    local filter = parse_filter_options(arg)
+
+    io.stdout:setvbuf("full")
+
+    local stack = {}
+    local cur = nil
+    local got_first_line = false
+
+    for line in io.stdin:lines() do
+        local level_name, tail = line:match("^%s*(%S+)%s*(.*)$")
+        local level = level_map[level_name]
+
+        if level <= filter.max_level then
+            local event, path, depth
+
+            if cur then
+                cur.got_line = true
+            end
+
+            -- If it is a STRUCT message
+            if level == level_map.STRUCT then
+                event, path, tail =
+                        tail:match("^(%S+)%s*'([^']*)'%s*(.*)$")
+                depth = #path:gsub("[^/]", "")
+                if event == "BEGIN" or event == "ENTER" then
+                    if event == "BEGIN" or
+                       not cur or path ~= cur.path then
+                        for i = #stack, 1, -1 do
+                            if stack[i].max_depth < depth then
+                                stack[i].max_depth = depth
+                            else
+                                break
+                            end
+                        end
+                        cur = {path         = path,
+                               depth        = depth,
+                               max_depth    = depth,
+                               line_list    = {},
+                               got_line     = (event == "ENTER"),
+                               exit_status  = nil,
+                               end_status   = nil}
+                        table.insert(stack, cur)
+                    end
+                elseif event == "EXIT" or event == "END" then
+                    local status_name = tail:match("%S+")
+                    local status = status_map[status_name]
+                    if event == "EXIT" then
+                        cur.exit_status = status
+                    else
+                        cur.end_status = status
+                    end
+                end
+            end
+
+            if cur == nil then
+                -- Output the line
+                io.stdout:write(line, "\n")
+                io.stdout:flush()
+            else
+                local pending_lines = false
+                -- For each assertion in the stack starting from the root
+                for _, a in ipairs(stack) do
+                    local pass = filter_assertion(filter, a)
+                    -- If the filter is not ready to decide
+                    if pass == nil or pass and pending_lines then
+                        -- If it's the current assertion
+                        if a == cur then
+                            -- Add the line to the line buffer
+                            table.insert(cur.line_list, line)
+                        end
+                        if #a.line_list > 0 then
+                            pending_lines = true
+                        end
+                    else
+                        if pass then
+                            -- Output the buffered lines
+                            for _, l in ipairs(a.line_list) do
+                                io.stdout:write(l, "\n")
+                            end
+                            -- If it's the current assertion
+                            if a == cur then
+                                -- Output the current line
+                                io.stdout:write(line, "\n")
+                            end
+                            io.stdout:flush()
+                        end
+                        -- Empty the line buffer
+                        for i, l in pairs(a.line_list) do
+                            a.line_list[i] = nil
+                        end
+                    end
+                end
+            end
+
+
+            -- If it was the end of an assertion
+            if cur and level == level_map.STRUCT and event == "END" then
+                table.remove(stack)
+                local parent = stack[#stack]
+                if parent then
+                    for _, l in ipairs(cur.line_list) do
+                        table.insert(parent.line_list, l)
+                    end
+                end
+                cur = parent
+            end
+        end
+    end
+
+    if cur and #cur.line_list ~= 0 then
+        cur.end_status = cur.exit_status
+        local pass = filter_assertion(filter, cur)
+        if pass == nil then
+            error(("Unterminated assertion %s, " ..
+                   "cannot determine filter outcome"):format(cur.path))
+        elseif pass then
+            -- Output buffered lines
+            for _, l in ipairs(cur.line_list) do
+                io.stdout:write(l, "\n")
+            end
+            io.stdout:flush()
+        end
+    end
+end

@@ -1,0 +1,198 @@
+#!/bin/bash
+#
+# bt_log_cook test suite
+#
+# Copyright (c) 2013 Red Hat, Inc. All rights reserved.
+#
+# This copyrighted material is made available to anyone wishing
+# to use, modify, copy, or redistribute it subject to the terms
+# and conditions of the GNU General Public License version 2.
+
+. bt.sh
+bt_suite_init "$@"
+
+declare -a STATUS_LIST=(
+                SKIPPED
+                PASSED
+                WAIVED
+                FAILED 
+                ERRORED
+                PANICKED
+                ABORTED
+)
+
+
+# Execute a cooked log comparison test
+# Args: name
+# Input: input (original) and expected output (cooked) logs, separated by
+#        a '-' on a line by itself, will have leading space removed from every
+#        line
+function t()
+{
+    declare -r name="$1"
+    declare -r input_and_expected_output=`sed -e 's/^\s\+//'`
+    declare -r input=`echo -n "\$input_and_expected_output" |
+                        sed -ne '/^-$/q; p'`
+    declare -r expected_output=`echo -n "\$input_and_expected_output" |
+                                sed -ne 'x; /^-$/{x;p;x}; x; /^-$/x'`
+
+    bt_test_begin "$name"; (
+        bt_test_init
+        declare result=0
+        declare status=0
+        declare output
+        output=`echo -n "$input" | bt_log_cook` || status=$?
+        if [ "$output" != "$expected_output" ]; then
+            echo "====== INPUT ======"
+            echo "$input"
+            echo "= EXPECTED OUTPUT ="
+            echo "$expected_output"
+            echo "== RESULT OUTPUT =="
+            echo "$output"
+            echo "==================="
+            echo "Unexpected output"
+            result=1
+        fi
+        if [ $status != 0 ]; then
+            echo "Unexpected exit status: $status"
+            result=1
+        fi
+        exit $result
+    ); bt_test_end
+}
+
+t empty <<<"\
+    -"
+
+t enter <<<"\
+    STRUCT ENTER ''
+    -"
+
+t enter_exit <<<"\
+    STRUCT ENTER ''
+    STRUCT EXIT '' PASSED
+    -
+    PASSED"
+
+t begin_enter_exit <<<"\
+    STRUCT BEGIN '/t'
+    STRUCT ENTER '/t'
+    STRUCT EXIT '/t' PASSED
+    -
+    /t PASSED"
+
+t begin_end <<<"\
+    STRUCT BEGIN '/t'
+    STRUCT END '/t' PASSED
+    -
+    /t PASSED"
+
+t begin_enter_exit_end <<<"\
+    STRUCT BEGIN '/t'
+    STRUCT ENTER '/t'
+    STRUCT EXIT '/t' PASSED
+    STRUCT END '/t' PASSED
+    -
+    /t PASSED"
+
+t unconcluded <<<"\
+    STRUCT BEGIN '/1'
+    STRUCT ENTER '/1'
+    STRUCT EXIT '/1' SKIPPED
+    STRUCT END '/1' SKIPPED
+    STRUCT BEGIN '/2'
+    STRUCT ENTER '/2'
+    STRUCT EXIT '/2' PASSED
+    STRUCT END '/2' PASSED
+    -
+    /1 SKIPPED
+    /2 PASSED
+    PASSED?"
+
+t unconcluded_unended <<<"\
+    STRUCT BEGIN '/1'
+    STRUCT ENTER '/1'
+    STRUCT EXIT '/1' SKIPPED
+    STRUCT END '/1' SKIPPED
+    STRUCT BEGIN '/2'
+    STRUCT ENTER '/2'
+    STRUCT EXIT '/2' PASSED
+    -
+    /1 SKIPPED
+    /2 PASSED
+    PASSED?"
+
+t concluded <<<"\
+    STRUCT ENTER ''
+    STRUCT BEGIN '/1'
+    STRUCT ENTER '/1'
+    STRUCT EXIT '/1' SKIPPED
+    STRUCT END '/1' SKIPPED
+    STRUCT BEGIN '/2'
+    STRUCT ENTER '/2'
+    STRUCT EXIT '/2' PASSED
+    STRUCT END '/2' PASSED
+    STRUCT EXIT '' PASSED
+    -
+    /1 SKIPPED
+    /2 PASSED
+    PASSED"
+
+t unexited <<<"\
+    STRUCT ENTER ''
+    STRUCT BEGIN '/1'
+    STRUCT ENTER '/1'
+    STRUCT EXIT '/1' SKIPPED
+    STRUCT END '/1' SKIPPED
+    STRUCT BEGIN '/2'
+    STRUCT ENTER '/2'
+    STRUCT EXIT '/2' PASSED
+    STRUCT END '/2' PASSED
+    -
+    /1 SKIPPED
+    /2 PASSED
+    PASSED?"
+
+t end_reason <<<"\
+    STRUCT BEGIN '/1'
+    STRUCT END '/1' FAILED Bug 12345
+    -
+    /1 FAILED Bug 12345"
+
+t output_reason <<<"\
+    STRUCT BEGIN '/1'
+    STRUCT ENTER '/1'
+    OUTPUT Segmentation fault
+    STRUCT EXIT '/1'
+    STRUCT END '/1' FAILED
+    -
+    /1 FAILED \"Segmentation fault\""
+
+t parent_override <<<"\
+    STRUCT ENTER ''
+    STRUCT BEGIN '/1'
+    STRUCT ENTER '/1'
+    STRUCT BEGIN '/2'
+    STRUCT ENTER '/2'
+    STRUCT EXIT '/2' FAILED
+    STRUCT END '/2' FAILED
+    STRUCT EXIT '/1' WAIVED
+    STRUCT END '/1' WAIVED
+    STRUCT EXIT '' WAIVED
+    -
+    /2 FAILED
+    /1 WAIVED
+    WAIVED"
+
+bt_suite_begin status; (
+    bt_suite_init
+    for s in "${STATUS_LIST[@]}"; do
+        t "$s" <<<"\
+            STRUCT BEGIN ''
+            STRUCT ENTER ''
+            STRUCT EXIT '' $s
+            STRUCT END '' $s
+            -
+            $s"
+    done
+); bt_suite_end

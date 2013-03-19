@@ -1,0 +1,453 @@
+#!/bin/bash
+#
+# bt_log_filter test suite
+#
+# Copyright (c) 2013 Red Hat, Inc. All rights reserved.
+#
+# This copyrighted material is made available to anyone wishing
+# to use, modify, copy, or redistribute it subject to the terms
+# and conditions of the GNU General Public License version 2.
+
+. bt.sh
+bt_suite_init "$@"
+
+function t()
+{
+    declare -r name="$1"
+    shift
+    declare -r input_and_expected_output=`sed -e 's/^\s\+//'`
+    declare -r input=`echo -n "$input_and_expected_output" |
+                        sed -ne '/^-$/q; p'`
+    declare -r expected_output=`echo -n "$input_and_expected_output" |
+                                    sed -ne 'x; /^-$/{x;p;x}; x; /^-$/x'`
+
+    bt_test_begin -- "$name"; (
+        bt_test_init
+        declare output
+        declare status=0
+        declare result=0
+        output=`echo -n "$input" | bt_log_filter "$@"`
+        if [ "$output" != "$expected_output" ]; then
+            echo "====== INPUT ======"
+            echo "$input"
+            echo "= EXPECTED OUTPUT ="
+            echo "$expected_output"
+            echo "== RESULT OUTPUT =="
+            echo "$output"
+            echo "==================="
+            echo "Unexpected output"
+            result=1
+        fi
+        if [ $status != 0 ]; then
+            echo "Unexpected exit status: $status"
+            result=1
+        fi
+        exit $result
+    ); bt_test_end
+}
+
+t empty <<<"\
+    -"
+t one_line <<<"\
+    OUTPUT
+    -
+    OUTPUT"
+t two_lines <<<"\
+    OUTPUT
+    OUTPUT
+    -
+    OUTPUT
+    OUTPUT"
+
+bt_suite_begin level; (
+    bt_suite_init
+    t below -l TRACE <<<"\
+        OUTPUT
+        -
+        OUTPUT"
+    t exact -l OUTPUT <<<"\
+        OUTPUT
+        -
+        OUTPUT"
+    t above -l STRUCT <<<"\
+        OUTPUT
+        -"
+); bt_suite_end
+
+bt_suite_begin top; (
+    bt_suite_init
+    bt_suite_begin positive; (
+        bt_suite_init
+        t below_immediate -t 0 <<<"\
+            STRUCT BEGIN ''
+            OUTPUT
+            STRUCT END '' PASSED
+            -
+            STRUCT BEGIN ''
+            OUTPUT
+            STRUCT END '' PASSED"
+        t below_removed -t 0 <<<"\
+            STRUCT BEGIN '/1'
+            OUTPUT
+            STRUCT END '/1' PASSED
+            -
+            STRUCT BEGIN '/1'
+            OUTPUT
+            STRUCT END '/1' PASSED"
+        t above_immediate -t 2 <<<"\
+            STRUCT BEGIN '/1'
+            OUTPUT
+            STRUCT END '/1' PASSED
+            -"
+        t above_removed -t 2 <<<"\
+            STRUCT BEGIN ''
+            OUTPUT
+            STRUCT END '' PASSED
+            -"
+        t both_sides -t 1 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED"
+    ); bt_suite_end
+    bt_suite_begin negative; (
+        bt_suite_init
+        t below_immediate -t -1 <<<"\
+            STRUCT BEGIN ''
+            OUTPUT
+            STRUCT END '' PASSED
+            -
+            STRUCT BEGIN ''
+            OUTPUT
+            STRUCT END '' PASSED"
+        t below_removed -t -2 <<<"\
+            STRUCT BEGIN '/1'
+            OUTPUT
+            STRUCT END '/1' PASSED
+            -
+            STRUCT BEGIN '/1'
+            OUTPUT
+            STRUCT END '/1' PASSED"
+        t above_immediate -t -1 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED"
+        t above_removed -t -1 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED"
+    ); bt_suite_end
+); bt_suite_end
+
+bt_suite_begin bottom; (
+    bt_suite_init
+    bt_suite_begin positive; (
+        bt_suite_init
+        t above_immediate -b 0 <<<"\
+            STRUCT ENTER ''
+            OUTPUT
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT ENTER ''
+            OUTPUT
+            STRUCT EXIT '' PASSED"
+        t above_removed -b 1 <<<"\
+            STRUCT ENTER ''
+            OUTPUT
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT ENTER ''
+            OUTPUT
+            STRUCT EXIT '' PASSED"
+        t below_immediate -b 0 <<<"\
+            STRUCT BEGIN '/1'
+            OUTPUT
+            STRUCT END '/1' PASSED
+            -"
+        t below_removed -b 0 <<<"\
+            STRUCT BEGIN '/1/2'
+            OUTPUT
+            STRUCT END '/1/2' PASSED
+            -"
+        t both_sides -b 1 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED"
+    ); bt_suite_end
+    bt_suite_begin negative; (
+        bt_suite_init
+        t above_immediate -b -1 <<<"\
+            STRUCT ENTER ''
+            OUTPUT
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT ENTER ''
+            OUTPUT
+            STRUCT EXIT '' PASSED"
+        t above_removed -b -1 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED"
+        t below_immediate -b -2 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT ENTER ''
+            STRUCT EXIT '' PASSED"
+        t below_removed -b -3 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT ENTER ''
+            STRUCT EXIT '' PASSED"
+    ); bt_suite_end
+); bt_suite_end
+
+bt_suite_begin top_bottom; (
+    bt_suite_init
+    bt_suite_begin positive; (
+        bt_suite_init
+        t -1 -t 2 -b 1 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT BEGIN '/1/2/3'
+            STRUCT ENTER '/1/2/3'
+            STRUCT EXIT '/1/2/3' PASSED
+            STRUCT END '/1/2/3' PASSED
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -"
+        t 0 -t 1 -b 1 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED"
+        t 1 -t 1 -b 2 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT BEGIN '/1/2/3'
+            STRUCT ENTER '/1/2/3'
+            STRUCT EXIT '/1/2/3' PASSED
+            STRUCT END '/1/2/3' PASSED
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED"
+    ); bt_suite_end
+    bt_suite_begin negative; (
+        bt_suite_init
+        t -1 -t -2 -b -3 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT BEGIN '/1/2/3'
+            STRUCT ENTER '/1/2/3'
+            STRUCT EXIT '/1/2/3' PASSED
+            STRUCT END '/1/2/3' PASSED
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -"
+        t 0 -t -2 -b -2 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED"
+        t 1 -t -3 -b -2 <<<"\
+            STRUCT ENTER ''
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT BEGIN '/1/2/3'
+            STRUCT ENTER '/1/2/3'
+            STRUCT EXIT '/1/2/3' PASSED
+            STRUCT END '/1/2/3' PASSED
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED
+            STRUCT EXIT '' PASSED
+            -
+            STRUCT BEGIN '/1'
+            STRUCT ENTER '/1'
+            STRUCT BEGIN '/1/2'
+            STRUCT ENTER '/1/2'
+            STRUCT EXIT '/1/2' PASSED
+            STRUCT END '/1/2' PASSED
+            STRUCT EXIT '/1' PASSED
+            STRUCT END '/1' PASSED"
+    ); bt_suite_end
+); bt_suite_end
+
+bt_suite_begin status; (
+    bt_suite_init
+    t waived_failed_out -sFAILED <<<"\
+        STRUCT ENTER ''
+        STRUCT BEGIN '/1'
+        STRUCT ENTER '/1'
+        STRUCT EXIT '/1' FAILED
+        STRUCT END '/1' WAIVED
+        STRUCT EXIT '' WAIVED
+        -"
+    t waived_failed_in -sWAIVED <<<"\
+        STRUCT ENTER ''
+        STRUCT BEGIN '/1'
+        STRUCT ENTER '/1'
+        STRUCT EXIT '/1' FAILED
+        STRUCT END '/1' WAIVED
+        STRUCT EXIT '' WAIVED
+        -
+        STRUCT ENTER ''
+        STRUCT BEGIN '/1'
+        STRUCT ENTER '/1'
+        STRUCT EXIT '/1' FAILED
+        STRUCT END '/1' WAIVED
+        STRUCT EXIT '' WAIVED"
+    t waived_passed -sWAIVED <<<"\
+        STRUCT ENTER ''
+        STRUCT BEGIN '/1'
+        STRUCT ENTER '/1'
+        STRUCT EXIT '/1' PASSED
+        STRUCT END '/1' WAIVED
+        STRUCT EXIT '' WAIVED
+        -
+        STRUCT ENTER ''
+        STRUCT BEGIN '/1'
+        STRUCT ENTER '/1'
+        STRUCT EXIT '/1' PASSED
+        STRUCT END '/1' WAIVED
+        STRUCT EXIT '' WAIVED"
+    t skipped_out -sPASSED <<<"\
+        STRUCT ENTER ''
+        STRUCT BEGIN '/1'
+        STRUCT END '/1' SKIPPED
+        STRUCT BEGIN '/2'
+        STRUCT ENTER '/2'
+        STRUCT EXIT '/2' PASSED
+        STRUCT END '/2' PASSED
+        STRUCT EXIT '' PASSED
+        -
+        STRUCT ENTER ''
+        STRUCT BEGIN '/2'
+        STRUCT ENTER '/2'
+        STRUCT EXIT '/2' PASSED
+        STRUCT END '/2' PASSED
+        STRUCT EXIT '' PASSED"
+); bt_suite_end

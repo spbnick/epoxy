@@ -1,0 +1,205 @@
+#!/usr/bin/env lua
+--
+-- Cook bash test log for terse terminal or file output
+--
+-- Copyright (c) 2013 Red Hat, Inc. All rights reserved.
+--
+-- This copyrighted material is made available to anyone wishing
+-- to use, modify, copy, or redistribute it subject to the terms
+-- and conditions of the GNU General Public License version 2.
+
+local posix = require("posix")
+
+--- TTY output flag - try if stdout is connected to a terminal
+local ISATTY = posix.ttyname(posix.fileno(io.stdout)) ~= nil
+
+--- Status code -> name map
+local STATUS_CODE_NAME = {
+    "SKIPPED",
+    "PASSED",
+    "WAIVED",
+    "FAILED",
+    "ERRORED",
+    "PANICKED",
+    "ABORTED"
+}
+
+--- Status name -> code map
+local STATUS_NAME_CODE = {}
+for c, n in ipairs(STATUS_CODE_NAME) do
+    STATUS_NAME_CODE[n] = c
+end
+
+--- Status name -> decoration ANSI attributes map
+local STATUS_NAME_ATTR = {
+    SKIPPED     = "37",
+    PASSED      = "32",
+    WAIVED      = "33",
+    FAILED      = "31",
+    ERRORED     = "1;31",
+    PANICKED    = "41;37",
+    ABORTED     = "1;41;37",
+}
+
+local WORST_STATUS_NAME
+local WORST_STATUS_CODE
+local WORST_STATUS_PATH
+
+---
+-- Output line-erasing terminal control characters.
+--
+local function write_erase_line()
+    io.write("\27[1K\r" or "")
+end
+
+---
+-- Decorate a status name with ANSI terminal control characters, if output is
+-- done to a terminal.
+--
+-- @param status    Status name to decorate.
+--
+-- @return Decorated status name.
+local function decorate_status(status)
+    if ISATTY then
+        return ("\27[%sm%s\27[0m"):format(STATUS_NAME_ATTR[status], status)
+    else
+        return status
+    end
+end
+
+---
+-- Output an assertion conclusion.
+--
+-- @param path      Assertion path.
+-- @param status    Assertion status.
+-- @param reason    Assertion status reason.
+--
+local function write_conclusion(path, status, reason)
+    io.write(
+        path, #path > 0 and " " or "", decorate_status(status),
+        reason and " " or "", reason or "",
+        "\n")
+end
+
+---
+-- Output final status estimate.
+--
+local function write_estimate()
+    if WORST_STATUS_NAME ~= nil then
+        io.write(decorate_status(WORST_STATUS_NAME), "?")
+    end
+end
+
+---
+-- Conclude an assertion status - update estimate and output a conclusion.
+--
+-- @param path          Assertion path.
+-- @param status_name   Assertion status name.
+-- @param last_output   Last assertion output line.
+-- @param reason        Assertion status reason.
+--
+local function conclude(path, status_name, last_output, reason)
+    local status_code
+
+    status_code = STATUS_NAME_CODE[status_name]
+    if status_code == nil then
+        error("Invalid status: " .. status_name)
+    end
+    -- If this status is worse than the worst seen so far
+    -- or if it is a parent of the worst status assertion
+    if WORST_STATUS_CODE == nil or
+       status_code > WORST_STATUS_CODE or
+       path .. "/" == WORST_STATUS_PATH:sub(1, #path + 1) then
+        WORST_STATUS_CODE = status_code
+        WORST_STATUS_NAME = status_name
+        WORST_STATUS_PATH = path
+    end
+    -- If there was no explicitly assigned status reason and
+    -- the assertion has failed or worse and produced some output
+    if reason == nil and
+       status_code >= STATUS_NAME_CODE.FAILED and
+       last_output ~= nil then
+        -- Assume last line of assertion output is the reason
+        reason = '"' .. last_output .. '"'
+    end
+    write_conclusion(path, status_name, reason)
+end
+
+---
+-- Cook stdin to stdout.
+--
+local function cook()
+    local first_path
+    local output
+    local last_output
+    local path
+    local status
+    local reason
+
+    -- For each log line
+    for line in io.stdin:lines() do
+        status = nil
+        path = line:match("^%s*STRUCT%s+BEGIN%s'([^']*)'") or
+               line:match("^%s*STRUCT%s+ENTER%s'([^']*)'")
+        if path ~= nil then
+            if first_path == nil then
+                first_path = path
+            end
+        else
+            output = line:match("^%s*OUTPUT%s+(.+)$")
+            if output ~= nil then
+                last_output = output
+            else
+                path, status =
+                    line:match("^%s*STRUCT%s+EXIT%s+'([^']*)'%s+(%S+)$")
+                if path == nil then
+                    path, status, reason =
+                        line:match("^%s*STRUCT%s+END%s+" ..
+                                   "'([^']*)'%s+(%S+)%s*(.*)$")
+                    if path ~= nil then
+                        if ISATTY then
+                            -- Erase last running estimate
+                            write_erase_line()
+                        end
+                        conclude(path, status, last_output,
+                                 #reason > 0 and reason or nil)
+                        last_output = nil
+                        status = nil
+                        if ISATTY then
+                            -- Output running estimate
+                            write_estimate()
+                        end
+                        io.flush()
+                    end
+                end
+            end
+        end
+    end
+
+    if ISATTY then
+        -- Erase last running estimate
+        write_erase_line()
+    end
+
+    -- If there was EXIT without END
+    if status ~= nil then
+        conclude(path, status, last_output, nil)
+    end
+
+    -- If the log doesn't end with the assertion which began it and so there
+    -- is no overall conclusion
+    if path ~= first_path then
+        write_estimate()
+        io.write("\n")
+    end
+
+    io.flush()
+end
+
+local ok, errmsg = pcall(cook)
+if ok then
+    os.exit(0)
+else
+    io.stderr:write(errmsg)
+    os.exit(1)
+end
