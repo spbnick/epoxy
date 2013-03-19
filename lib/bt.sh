@@ -157,7 +157,7 @@ Options:
     --dont-unwaive=PATTERN  Don't remove \"waived\" status from assertions
                             matching PATTERN.
 
-    -e, --enable=PATTERN    Enable assertions matching PATTERN.
+    --enable=PATTERN        Enable assertions matching PATTERN.
     --dont-enable=PATTERN   Don't enable assertions matching PATTERN.
 
 Any arguments specified after \"--\" are passed to the suite.
@@ -191,7 +191,7 @@ function _bt_parse_args()
     # Parse framework arguments
     declare args_expr
     args_expr=`getopt --name \`basename "\$0"\` \
-                      --options hi:e:u:e: \
+                      --options hi:e:u: \
                       --longoptions help,include:,exclude:,dont-include: \
                       --longoptions unwaive:dont-unwaive:enable:dont-enable: \
                       -- "${args[@]}"`
@@ -210,7 +210,7 @@ function _bt_parse_args()
                 bt_glob_var_or BT_UNWAIVE       "$2"; shift 2;;
             --dont-unwaive)
                 bt_glob_var_or BT_DONT_UNWAIVE  "$2"; shift 2;;
-            -e|--enable)
+            --enable)
                 bt_glob_var_or BT_ENABLE        "$2"; shift 2;;
             --dont-enable)
                 bt_glob_var_or BT_DONT_ENABLE   "$2"; shift 2;;
