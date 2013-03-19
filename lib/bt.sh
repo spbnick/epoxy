@@ -121,7 +121,7 @@ function _bt_shell_init()
     if [ -n "${BASHPID+set}" ]; then
         BT_ABORT_PID="$BASHPID"
     elif [ -r /proc/self/stat ]; then
-        declare discard=
+        declare discard
         read -r BT_ABORT_PID discard < /proc/self/stat
     fi
 
