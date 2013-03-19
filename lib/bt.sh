@@ -280,7 +280,7 @@ function _bt_parse_args()
             -r|--raw)
                 _BT_LOG_COOK=false;                   shift;;
             --) shift; break;;
-            *) echo "Unknown option: $1" >&2; exit 127 ;;
+            *) bt_abort "Unknown option: $1";;
         esac
     done
 
