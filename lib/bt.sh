@@ -76,6 +76,25 @@ declare _BT_PROTOCOL
 # If "true", the temporary directory was created by this suite
 declare _BT_TMPDIR_OWNER
 
+# If "true", the logging system was set up by this suite
+declare _BT_LOG_OWNER
+# Log file
+declare _BT_LOG_FILE
+# Log output filtering enabled
+declare _BT_LOG_FILTER
+# Log output filter maximum level
+declare _BT_LOG_FILTER_LEVEL
+# Log output filter minimum depth
+declare _BT_LOG_FILTER_TOP
+# Log output filter maximum depth
+declare _BT_LOG_FILTER_BOTTOM
+# Log output filter status
+declare _BT_LOG_FILTER_STATUS
+# Log output cooking enabled
+declare _BT_LOG_COOK
+# Log pipe PID
+declare _BT_LOG_PID
+
 # Skipped assertion counter
 declare _BT_COUNT_SKIPPED
 # Passed assertion counter
@@ -141,13 +160,13 @@ Usage: `basename \"\$0\"` [OPTION]... [PATTERN]... [-- [SUITE_ARG]...]
 Execute test suite.
 
 Arguments:
-
     PATTERN                 Verify assertions matching PATTERN.
 
-Options:
-
+General options:
     -h, --help              Output this help message and exit.
+    -l, --log-file=FILE     Write raw unfiltered log to FILE.
 
+Assertion handling options:
     -i, --include=PATTERN   Verify assertions matching PATTERN.
     -e, --exclude=PATTERN,
     --dont-include=PATTERN  Don't verify assertions matching PATTERN.
@@ -160,6 +179,22 @@ Options:
     --enable=PATTERN        Enable assertions matching PATTERN.
     --dont-enable=PATTERN   Don't enable assertions matching PATTERN.
 
+Output options:
+    --filter-level=LEVEL    Output log messages with LEVEL maximum level only.
+    --filter-top=NUMBER     Output assertions with NUMBER depth minimum.
+                            Negative values count from the bottom.
+    --filter-bottom=NUMBER  Output assertions with NUMBER depth maximum.
+                            Negative values count from the bottom.
+    --filter-status=STATUS  Output assertions with STATUS or worse status
+                            only.
+    -u, --unfiltered        Don't filter output.
+    -r, --raw               Don't cook (don't summarize) output.
+
+Default options:
+    --filter-level=TRACE --filter-top=0
+    --filter-bottom=-1 --filter-status=PASSED
+
+All patterns are Bash extended glob-like paterns.
 Any arguments specified after \"--\" are passed to the suite.
 "
 }
@@ -169,6 +204,14 @@ Any arguments specified after \"--\" are passed to the suite.
 # Args: [arg...]
 function _bt_parse_args()
 {
+    _BT_LOG_FILE=
+    _BT_LOG_FILTER=true
+    _BT_LOG_FILTER_LEVEL="TRACE"
+    _BT_LOG_FILTER_TOP="0"
+    _BT_LOG_FILTER_BOTTOM="-1"
+    _BT_LOG_FILTER_STATUS="PASSED"
+    _BT_LOG_COOK=true
+
     # Collect framework arguments
     declare args=()
     while [ $# != 0 ]; do
@@ -191,9 +234,13 @@ function _bt_parse_args()
     # Parse framework arguments
     declare args_expr
     args_expr=`getopt --name \`basename "\$0"\` \
-                      --options hi:e:c: \
-                      --longoptions help,include:,exclude:,dont-include: \
+                      --options hl:i:e:c:ur \
+                      --longoptions help,log-file: \
+                      --longoptions include:,exclude:,dont-include: \
                       --longoptions claim:dont-claim:enable:dont-enable: \
+                      --longoptions filter-level:,filter-top: \
+                      --longoptions filter-bottom:,filter-status: \
+                      --longoptions unfiltered,raw \
                       -- "${args[@]}"`
     eval set -- "$args_expr"
 
@@ -202,6 +249,8 @@ function _bt_parse_args()
         case "$1" in
             -h|--help)
                 _bt_usage; exit 0;;
+            -l|--log-file)
+                _BT_LOG_FILE="$2";                    shift 2;;
             -i|--include)
                 bt_glob_var_or BT_INCLUDE       "$2"; shift 2;;
             -e|--exclude|--dont-include)
@@ -214,6 +263,22 @@ function _bt_parse_args()
                 bt_glob_var_or BT_ENABLE        "$2"; shift 2;;
             --dont-enable)
                 bt_glob_var_or BT_DONT_ENABLE   "$2"; shift 2;;
+            --filter-level)
+                # TODO Validate value
+                _BT_LOG_FILTER_LEVEL="$2";            shift 2;;
+            --filter-top)
+                # TODO Validate value
+                _BT_LOG_FILTER_TOP="$2";              shift 2;;
+            --filter-bottom)
+                # TODO Validate value
+                _BT_LOG_FILTER_BOTTOM="$2";           shift 2;;
+            --filter-status)
+                # TODO Validate value
+                _BT_LOG_FILTER_STATUS="$2";           shift 2;;
+            -u|--unfiltered)
+                _BT_LOG_FILTER=false;                 shift;;
+            -r|--raw)
+                _BT_LOG_COOK=false;                   shift;;
             --) shift; break;;
             *) echo "Unknown option: $1" >&2; exit 127 ;;
         esac
@@ -236,6 +301,23 @@ function _bt_init_log()
     declare -r output_fifo="$BT_TMPDIR/output.fifo"
     declare -r messages_fifo="$BT_TMPDIR/messages.fifo"
     declare -r sync_fifo="$BT_TMPDIR/sync.fifo"
+    declare pipe_cmd='bt_log_mix "$o" "$m" "$s"'
+
+    if [ -n "$_BT_LOG_FILE" ]; then
+        pipe_cmd="$pipe_cmd"' | tee "$f"'
+    fi
+
+    if $_BT_LOG_FILTER; then
+        pipe_cmd="$pipe_cmd | bt_log_filter \
+                                --level=$_BT_LOG_FILTER_LEVEL \
+                                --top=$_BT_LOG_FILTER_TOP \
+                                --bottom=$_BT_LOG_FILTER_BOTTOM \
+                                --status=$_BT_LOG_FILTER_STATUS"
+    fi
+
+    if $_BT_LOG_COOK; then
+        pipe_cmd="$pipe_cmd | bt_log_cook"
+    fi
 
     mkfifo "$output_fifo"
     mkfifo "$messages_fifo"
@@ -243,8 +325,9 @@ function _bt_init_log()
 
     # Start log-mixing process in a separate session and thus process group,
     # so it doesn't get killed by signals sent to our process group.
-    setsid bt_log_mix "$output_fifo" "$messages_fifo" "$sync_fifo" \
-                      0</dev/null &
+    o="$output_fifo" m="$messages_fifo" s="$sync_fifo" f="$_BT_LOG_FILE" \
+        setsid bash -c "export -n o m s f; $pipe_cmd" 0</dev/null &
+    _BT_LOG_PID="$!"
 
     # Open FIFO's and setup redirections
     eval "exec $BT_LOG_OUTPUT_FD>\"\$output_fifo\" \
@@ -252,6 +335,20 @@ function _bt_init_log()
                $BT_LOG_SYNC_FD<\"\$sync_fifo\" \
                $BT_STDOUT_FD>&1- $BT_STDERR_FD>&2- \
                1>&$BT_LOG_OUTPUT_FD 2>&$BT_LOG_OUTPUT_FD"
+}
+
+# Finalize test suite logging.
+function _bt_fini_log()
+{
+    # Close FIFOs and restore stdout and stderr
+    eval "exec $BT_LOG_OUTPUT_FD>&- \
+               $BT_LOG_MESSAGES_FD>&- \
+               $BT_LOG_SYNC_FD<&- \
+               1>&$BT_STDOUT_FD- \
+               2>&$BT_STDERR_FD-"
+
+    # Wait for the pipe to finish
+    wait "$_BT_LOG_PID"
 }
 
 # Log a message
@@ -321,6 +418,9 @@ function bt_suite_init()
     if ! ${_BT_LOG_SETUP-false}; then
         _bt_init_log
         _BT_LOG_SETUP=true
+        _BT_LOG_OWNER=true
+    else
+        _BT_LOG_OWNER=false
     fi
 
     _bt_log "STRUCT ENTER '$_BT_NAME_STACK'"
@@ -354,17 +454,24 @@ function _bt_fini()
 
     _bt_log "STRUCT EXIT  '$_BT_NAME_STACK' `bt_status_to_str $status`"
 
+    # Finish logging if this suite started it
+    if ${_BT_LOG_SETUP-false} && ${_BT_LOG_OWNER-false}; then
+        _bt_fini_log
+        _BT_LOG_SETUP=false
+        _BT_LOG_OWNER=false
+    fi
+
+    # Remove temporary directory, if created by this suite
+    if $_BT_TMPDIR_OWNER; then
+        rm -R "$BT_TMPDIR"
+    fi
+
     if [ $_BT_PROTOCOL == generic ]; then
         if [ "$status" -le $BT_STATUS_WAIVED ]; then
             status=0
         else
             status=1
         fi
-    fi
-
-    # Remove temporary directory, if created by this suite
-    if $_BT_TMPDIR_OWNER; then
-        rm -R "$BT_TMPDIR"
     fi
 
     exit "$status"
