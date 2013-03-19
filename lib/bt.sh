@@ -64,7 +64,7 @@ bt_export _BT_WAIVED
 # Temporary directory
 bt_export BT_TMPDIR
 
-# If "true", the log setup was done
+# If "true", log setup was done
 bt_export _BT_LOG_SETUP
 
 # Last initialized subshell depth
