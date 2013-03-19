@@ -12,7 +12,6 @@
 bt_suite_init "$@"
 
 bt_suite glob glob
-bt_suite glob_escape glob_escape
 bt_suite_begin log; (
     bt_suite_init
     bt_suite mix log_mix

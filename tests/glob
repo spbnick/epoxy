@@ -242,3 +242,5 @@ bt_suite_begin path; (
     bt_test -e 1  child_as_exact      bt_glob     "/aaa/bbb" "/aaa/bbb/ccc"
     bt_test -e 1  child_as_parent     bt_glob -p  "/aaa/bbb" "/aaa/bbb/ccc/"
 ); bt_suite_end
+
+bt_suite escape glob_escape
