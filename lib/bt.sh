@@ -52,7 +52,7 @@ bt_export BT_INCLUDE BT_DONT_INCLUDE
 # Glob pattern matching assertions to (not) remove disabled status from
 bt_export BT_ENABLE BT_DONT_ENABLE
 # Glob pattern matching assertions to (not) remove waived status from
-bt_export BT_UNWAIVE BT_DONT_UNWAIVE
+bt_export BT_CLAIM BT_DONT_CLAIM
 
 # Assertion name stack
 bt_export _BT_NAME_STACK
@@ -152,10 +152,10 @@ Options:
     -e, --exclude=PATTERN,
     --dont-include=PATTERN  Don't verify assertions matching PATTERN.
 
-    -u, --unwaive=PATTERN   Remove \"waived\" status from assertions matching
-                            PATTERN.
-    --dont-unwaive=PATTERN  Don't remove \"waived\" status from assertions
+    -c, --claim=PATTERN     Claim (remove \"waived\" status from) assertions
                             matching PATTERN.
+    --dont-claim=PATTERN    Don't claim (don't remove \"waived\" status from)
+                            assertions matching PATTERN.
 
     --enable=PATTERN        Enable assertions matching PATTERN.
     --dont-enable=PATTERN   Don't enable assertions matching PATTERN.
@@ -191,9 +191,9 @@ function _bt_parse_args()
     # Parse framework arguments
     declare args_expr
     args_expr=`getopt --name \`basename "\$0"\` \
-                      --options hi:e:u: \
+                      --options hi:e:c: \
                       --longoptions help,include:,exclude:,dont-include: \
-                      --longoptions unwaive:dont-unwaive:enable:dont-enable: \
+                      --longoptions claim:dont-claim:enable:dont-enable: \
                       -- "${args[@]}"`
     eval set -- "$args_expr"
 
@@ -206,10 +206,10 @@ function _bt_parse_args()
                 bt_glob_var_or BT_INCLUDE       "$2"; shift 2;;
             -e|--exclude|--dont-include)
                 bt_glob_var_or BT_DONT_INCLUDE  "$2"; shift 2;;
-            -u|--unwaive)
-                bt_glob_var_or BT_UNWAIVE       "$2"; shift 2;;
-            --dont-unwaive)
-                bt_glob_var_or BT_DONT_UNWAIVE  "$2"; shift 2;;
+            -c|--claim)
+                bt_glob_var_or BT_CLAIM         "$2"; shift 2;;
+            --dont-claim)
+                bt_glob_var_or BT_DONT_CLAIM    "$2"; shift 2;;
             --enable)
                 bt_glob_var_or BT_ENABLE        "$2"; shift 2;;
             --dont-enable)
@@ -630,8 +630,8 @@ function bt_test_begin()
         skipped=true
     fi
 
-    # Disable waiving if the path matches "UNWAIVE" filter
-    if bt_path_filter "$_BT_NAME_STACK" true UNWAIVE false; then
+    # Disable waiving if the path matches "CLAIM" filter
+    if bt_path_filter "$_BT_NAME_STACK" true CLAIM false; then
         waived=false
     fi
 
@@ -891,8 +891,8 @@ function bt_suite_begin()
         skipped=true
     fi
 
-    # Disable waiving if path matches "UNWAIVE" filter
-    if bt_path_filter "$_BT_NAME_STACK" false UNWAIVE false; then
+    # Disable waiving if path matches "CLAIM" filter
+    if bt_path_filter "$_BT_NAME_STACK" false CLAIM false; then
         waived=false
     fi
 
