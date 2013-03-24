@@ -15,6 +15,7 @@ declare -r _BT_SH=
 . bt_glob.sh
 . bt_log.sh
 . bt_path.sh
+. bt_teardown.sh
 
 # First FD reserved for the user
 declare -r BT_USER_FD1=3
@@ -84,11 +85,6 @@ declare _BT_COUNT_ERRORED
 declare _BT_COUNT_PANICKED
 # Aborted assertion counter
 declare _BT_COUNT_ABORTED
-
-# Teardown command argc array
-declare -a _BT_TEARDOWN_ARGC
-# Teardown command argv array
-declare -a _BT_TEARDOWN_ARGV
 
 # Initialize a (sub)shell.
 function _bt_shell_init()
@@ -955,43 +951,6 @@ function bt_suite()
     bt_suite_end
 }
 
-# Push a command to the teardown command stack.
-# Args: ...
-function bt_teardown_push()
-{
-    bt_arrstack_push _BT_TEARDOWN_ARGC $#
-    bt_arrstack_push _BT_TEARDOWN_ARGV "$@"
-}
-
-# Pop commands from the teardown command stack.
-# Args: [num_commands]
-function bt_teardown_pop()
-{
-    declare num_commands="${1:-1}"
-    bt_abort_assert [ "$num_commands" -le ${#_BT_TEARDOWN_ARGC[@]} ]
-    for ((; num_commands > 0; num_commands--)); do
-        bt_arrstack_pop _BT_TEARDOWN_ARGV \
-                        `bt_arrstack_peek _BT_TEARDOWN_ARGC`
-        bt_arrstack_pop _BT_TEARDOWN_ARGC
-    done
-}
-
-# Execute a teardown command from the top of the teardown stack.
-function bt_teardown_exec()
-{
-    bt_abort_assert [ ${#_BT_TEARDOWN_ARGC[@]} != 0 ]
-    "${_BT_TEARDOWN_ARGV[@]: -${_BT_TEARDOWN_ARGC[${#_BT_TEARDOWN_ARGC[@]}-1]}}"
-}
-
-# Execute and pop all teardown commands from the teardown stack.
-function _bt_teardown()
-{
-    while [ ${#_BT_TEARDOWN_ARGC[@]} != 0 ]; do
-        bt_teardown_exec
-        bt_teardown_pop
-    done
-}
-
 # Handle EXIT trap
 function _bt_trap_exit()
 {
@@ -1003,7 +962,7 @@ function _bt_trap_exit()
     bt_attrs_push +o errexit
     (
         bt_attrs_pop
-        _bt_teardown
+        bt_teardown_exec
     )
     teardown_status=$?
     bt_attrs_pop
