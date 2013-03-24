@@ -962,7 +962,7 @@ function _bt_trap_exit()
     bt_attrs_push +o errexit
     (
         bt_attrs_pop
-        bt_teardown_exec
+        bt_teardown_exec_all
     )
     teardown_status=$?
     bt_attrs_pop

@@ -38,20 +38,22 @@ function bt_teardown_pop()
     done
 }
 
-# Execute a teardown command from the top of the teardown stack.
-function bt_teardown_exec_top()
-{
-    bt_abort_assert [ ${#_BT_TEARDOWN_ARGC[@]} != 0 ]
-    "${_BT_TEARDOWN_ARGV[@]: -${_BT_TEARDOWN_ARGC[${#_BT_TEARDOWN_ARGC[@]}-1]}}"
-}
-
-# Execute and pop all teardown commands from the teardown stack.
+# Execute and pop commands from the teardown command stack.
+# Args: [num_commands]
 function bt_teardown_exec()
 {
-    while [ ${#_BT_TEARDOWN_ARGC[@]} != 0 ]; do
-        bt_teardown_exec_top
+    declare num_commands="${1:-1}"
+    bt_abort_assert [ "$num_commands" -le ${#_BT_TEARDOWN_ARGC[@]} ]
+    for ((; num_commands > 0; num_commands--)); do
+        "${_BT_TEARDOWN_ARGV[@]: -${_BT_TEARDOWN_ARGC[${#_BT_TEARDOWN_ARGC[@]}-1]}}"
         bt_teardown_pop
     done
+}
+
+# Execute and pop all commands from the teardown command stack.
+function bt_teardown_exec_all()
+{
+    bt_teardown_exec "${#_BT_TEARDOWN_ARGC[@]}"
 }
 
 fi # _BT_TEARDOWN_SH
