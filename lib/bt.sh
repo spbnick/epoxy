@@ -13,21 +13,12 @@ declare -r _BT_SH=
 . bt_util.sh
 . bt_status.sh
 . bt_glob.sh
+. bt_log.sh
 
 # First FD reserved for the user
 declare -r BT_USER_FD1=3
 # Second FD reserved for the user
 declare -r BT_USER_FD2=4
-# Original stdout FD
-declare -r BT_STDOUT_FD=5
-# Original stderr FD
-declare -r BT_STDERR_FD=6
-# Log stdout and stderr output FD
-declare -r BT_LOG_OUTPUT_FD=7
-# Log messages output FD
-declare -r BT_LOG_MESSAGES_FD=8
-# Log sync input FD
-declare -r BT_LOG_SYNC_FD=9
 
 # Suite command-line arguments
 declare -a BT_SUITE_ARGS=()
@@ -75,25 +66,8 @@ declare _BT_PROTOCOL
 
 # If "true", the temporary directory was created by this suite
 declare _BT_TMPDIR_OWNER
-
 # If "true", the logging system was set up by this suite
 declare _BT_LOG_OWNER
-# Log file
-declare _BT_LOG_FILE
-# Log output filtering enabled
-declare _BT_LOG_FILTER
-# Log output filter maximum level
-declare _BT_LOG_FILTER_LEVEL
-# Log output filter minimum depth
-declare _BT_LOG_FILTER_TOP
-# Log output filter maximum depth
-declare _BT_LOG_FILTER_BOTTOM
-# Log output filter status
-declare _BT_LOG_FILTER_STATUS
-# Log output cooking enabled
-declare _BT_LOG_COOK
-# Log pipe PID
-declare _BT_LOG_PID
 
 # Skipped assertion counter
 declare _BT_COUNT_SKIPPED
@@ -295,71 +269,6 @@ function _bt_parse_args()
     done
 }
 
-# Setup test suite logging.
-function _bt_init_log()
-{
-    declare -r output_fifo="$BT_TMPDIR/output.fifo"
-    declare -r messages_fifo="$BT_TMPDIR/messages.fifo"
-    declare -r sync_fifo="$BT_TMPDIR/sync.fifo"
-    declare pipe_cmd='bt_log_mix "$o" "$m" "$s"'
-
-    if [ -n "$_BT_LOG_FILE" ]; then
-        pipe_cmd="$pipe_cmd"' | tee "$f"'
-    fi
-
-    if $_BT_LOG_FILTER; then
-        pipe_cmd="$pipe_cmd | bt_log_filter \
-                                --level=$_BT_LOG_FILTER_LEVEL \
-                                --top=$_BT_LOG_FILTER_TOP \
-                                --bottom=$_BT_LOG_FILTER_BOTTOM \
-                                --status=$_BT_LOG_FILTER_STATUS"
-    fi
-
-    if $_BT_LOG_COOK; then
-        pipe_cmd="$pipe_cmd | bt_log_cook"
-    fi
-
-    mkfifo "$output_fifo"
-    mkfifo "$messages_fifo"
-    mkfifo "$sync_fifo"
-
-    # Start log-mixing process in a separate session and thus process group,
-    # so it doesn't get killed by signals sent to our process group.
-    o="$output_fifo" m="$messages_fifo" s="$sync_fifo" f="$_BT_LOG_FILE" \
-        setsid bash -c "export -n o m s f; $pipe_cmd" 0</dev/null &
-    _BT_LOG_PID="$!"
-
-    # Open FIFO's and setup redirections
-    eval "exec $BT_LOG_OUTPUT_FD>\"\$output_fifo\" \
-               $BT_LOG_MESSAGES_FD>\"\$messages_fifo\" \
-               $BT_LOG_SYNC_FD<\"\$sync_fifo\" \
-               $BT_STDOUT_FD>&1- $BT_STDERR_FD>&2- \
-               1>&$BT_LOG_OUTPUT_FD 2>&$BT_LOG_OUTPUT_FD"
-}
-
-# Finalize test suite logging.
-function _bt_fini_log()
-{
-    # Close FIFOs and restore stdout and stderr
-    eval "exec $BT_LOG_OUTPUT_FD>&- \
-               $BT_LOG_MESSAGES_FD>&- \
-               $BT_LOG_SYNC_FD<&- \
-               1>&$BT_STDOUT_FD- \
-               2>&$BT_STDERR_FD-"
-
-    # Wait for the pipe to finish
-    wait "$_BT_LOG_PID"
-}
-
-# Log a message
-# Args: [message_word...]
-function _bt_log()
-{
-    declare newline
-    echo "$@" >&$BT_LOG_MESSAGES_FD
-    read -u $BT_LOG_SYNC_FD newline
-}
-
 # Initialize a suite shell, parse command line arguments, extracting
 # framework-specific arguments and storing suite arguments in BT_SUITE_ARGS
 # array.
@@ -416,14 +325,14 @@ function bt_suite_init()
     # Setup logging, if not done yet
     bt_abort_assert bt_bool_is_valid "${_BT_LOG_SETUP-false}"
     if ! ${_BT_LOG_SETUP-false}; then
-        _bt_init_log
+        _bt_log_init
         _BT_LOG_SETUP=true
         _BT_LOG_OWNER=true
     else
         _BT_LOG_OWNER=false
     fi
 
-    _bt_log "STRUCT ENTER '$_BT_NAME_STACK'"
+    _bt_log_msg "STRUCT ENTER '$_BT_NAME_STACK'"
 }
 
 # Cleanup a suite shell.
@@ -452,11 +361,11 @@ function _bt_fini()
 
     trap - EXIT
 
-    _bt_log "STRUCT EXIT  '$_BT_NAME_STACK' `bt_status_to_str $status`"
+    _bt_log_msg "STRUCT EXIT  '$_BT_NAME_STACK' `bt_status_to_str $status`"
 
     # Finish logging if this suite started it
     if ${_BT_LOG_SETUP-false} && ${_BT_LOG_OWNER-false}; then
-        _bt_fini_log
+        _bt_log_fini
         _BT_LOG_SETUP=false
         _BT_LOG_OWNER=false
     fi
@@ -752,7 +661,7 @@ function bt_test_begin()
     # Remember failure reason - to be logged on failure
     _BT_FAILURE_REASON="$failure"
 
-    _bt_log "STRUCT BEGIN '$_BT_NAME_STACK'${brief:+ $brief}"
+    _bt_log_msg "STRUCT BEGIN '$_BT_NAME_STACK'${brief:+ $brief}"
 
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
@@ -795,7 +704,7 @@ function bt_test_end()
         msg="$msg${_BT_FAILURE_REASON:+ $_BT_FAILURE_REASON}"
     fi
     unset _BT_FAILURE_REASON
-    _bt_log "$msg"
+    _bt_log_msg "$msg"
 
     # "Exit" the assertion
     bt_strstack_pop _BT_NAME_STACK /
@@ -1010,7 +919,7 @@ function bt_suite_begin()
     # Remember failure reason - to be logged on failure
     _BT_FAILURE_REASON="$failure"
 
-    _bt_log "STRUCT BEGIN '$_BT_NAME_STACK'${brief:+ $brief}"
+    _bt_log_msg "STRUCT BEGIN '$_BT_NAME_STACK'${brief:+ $brief}"
 
     # Disable errexit so a failed command doesn't exit this shell
     bt_attrs_push +o errexit
@@ -1045,7 +954,7 @@ function bt_suite_end()
         msg="$msg${_BT_FAILURE_REASON:+ $_BT_FAILURE_REASON}"
     fi
     unset _BT_FAILURE_REASON
-    _bt_log "$msg"
+    _bt_log_msg "$msg"
 
     # "Exit" the assertion
     bt_strstack_pop _BT_NAME_STACK /
