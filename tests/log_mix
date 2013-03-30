@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# bt_log_mix test suite
+# ep_log_mix test suite
 #
 # Copyright (c) 2013 Red Hat, Inc. All rights reserved.
 #
@@ -8,11 +8,11 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-. bt.sh
-bt_suite_init "$@"
+. ep.sh
+ep_suite_init "$@"
 
-declare -r SUITE_TMPDIR=`mktemp -d -t bt_log_mix_test.XXXXXXXXXX`
-bt_teardown_push rm -R "$SUITE_TMPDIR"
+declare -r SUITE_TMPDIR=`mktemp -d -t ep_log_mix_test.XXXXXXXXXX`
+ep_teardown_push rm -R "$SUITE_TMPDIR"
 declare -r OUTPUT_FIFO="$SUITE_TMPDIR/output.fifo"
 declare -r MESSAGES_FIFO="$SUITE_TMPDIR/messages.fifo"
 declare -r SYNC_FIFO="$SUITE_TMPDIR/sync.fifo"
@@ -24,10 +24,10 @@ mkfifo "$SYNC_FIFO"
 
 # Execute a log comparison test
 # Args: name
-# Input: bt_log_mix-interacting script and expected log, separated by a '-' on
+# Input: ep_log_mix-interacting script and expected log, separated by a '-' on
 #        a line by itself, will have leading space removed from every line;
 #        the script will be executed with stdout connected to "output", stderr
-#        - to "messages" and stdin - to "sync" of bt_log_mix.
+#        - to "messages" and stdin - to "sync" of ep_log_mix.
 function t()
 {
     declare -r name="$1"
@@ -37,19 +37,19 @@ function t()
     declare -r expected_log=`echo -n "\$expr_and_log" |
                                 sed -ne 'x; /^-$/{x;p;x}; x; /^-$/x'`
 
-    bt_test_begin "$name"; (
-        bt_test_init
+    ep_test_begin "$name"; (
+        ep_test_init
         declare result_log
         declare status=0
         result_log=`eval "
-              exec $BT_USER_FD1>&1- $BT_USER_FD2>&2-
-              bt_log_mix \"\$OUTPUT_FIFO\" \
+              exec $EP_USER_FD1>&1- $EP_USER_FD2>&2-
+              ep_log_mix \"\$OUTPUT_FIFO\" \
                          \"\$MESSAGES_FIFO\" \
                          \"\$SYNC_FIFO\" \
                          0</dev/null 1>&3 2>&4 &
               exec 0<\"\$SYNC_FIFO\" 1>\"\$OUTPUT_FIFO\" 2>\"\$MESSAGES_FIFO\"
               $expr
-              exec 0<&- 1>&- 2>&- 1>&$BT_USER_FD1- 2>&$BT_USER_FD2-
+              exec 0<&- 1>&- 2>&- 1>&$EP_USER_FD1- 2>&$EP_USER_FD2-
               wait %1
         "` || status=$?
         if [ $status != 0 ]; then
@@ -65,7 +65,7 @@ function t()
             echo "Unexpected output"
             exit 1
         fi
-    ); bt_test_end
+    ); ep_test_end
 }
 
 t empty <<<"

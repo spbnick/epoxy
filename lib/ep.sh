@@ -7,87 +7,87 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-if [ -z ${_BT_SH+set} ]; then
-declare -r _BT_SH=
+if [ -z ${_EP_SH+set} ]; then
+declare -r _EP_SH=
 
-. bt_util.sh
-. bt_status.sh
-. bt_glob.sh
-. bt_log.sh
-. bt_path.sh
-. bt_teardown.sh
+. ep_util.sh
+. ep_status.sh
+. ep_glob.sh
+. ep_log.sh
+. ep_path.sh
+. ep_teardown.sh
 
 # First FD reserved for the user
-declare -r BT_USER_FD1=3
+declare -r EP_USER_FD1=3
 # Second FD reserved for the user
-declare -r BT_USER_FD2=4
+declare -r EP_USER_FD2=4
 
 # Suite command-line arguments
-declare -a BT_SUITE_ARGS=()
+declare -a EP_SUITE_ARGS=()
 
 # List of inter-suite environment variables.
-declare -a _BT_EXPORT_LIST=()
+declare -a _EP_EXPORT_LIST=()
 
 # Declare inter-suite environment variables.
 # Args: [_name...]
-function bt_export()
+function ep_export()
 {
-    bt_arrstack_push _BT_EXPORT_LIST "$@"
+    ep_arrstack_push _EP_EXPORT_LIST "$@"
     export -- "$@"
 }
 
 # Protocol for suites (nothing, "generic", or "suite")
-bt_export BT_PROTOCOL
+ep_export EP_PROTOCOL
 
 # NOTE: using export instead of declare -x as a bash 3.x bug workaround
 # Glob pattern matching assertions to (not) include in the run
-bt_export BT_INCLUDE BT_DONT_INCLUDE
+ep_export EP_INCLUDE EP_DONT_INCLUDE
 # Glob pattern matching assertions to (not) remove disabled status from
-bt_export BT_ENABLE BT_DONT_ENABLE
+ep_export EP_ENABLE EP_DONT_ENABLE
 # Glob pattern matching assertions to (not) remove waived status from
-bt_export BT_CLAIM BT_DONT_CLAIM
+ep_export EP_CLAIM EP_DONT_CLAIM
 
 # Assertion name stack
-bt_export _BT_NAME_STACK
+ep_export _EP_NAME_STACK
 # "Skipped" flag - exit assertion shell immediately, if "true".
-bt_export _BT_SKIPPED
+ep_export _EP_SKIPPED
 # "Waived" flag - ignore assertion status, if "true".
-bt_export _BT_WAIVED
+ep_export _EP_WAIVED
 
 # Temporary directory
-bt_export BT_TMPDIR
+ep_export EP_TMPDIR
 
 # If "true", log setup was done
-bt_export _BT_LOG_SETUP
+ep_export _EP_LOG_SETUP
 
 # Last initialized subshell depth
-declare _BT_SHELL_INIT_SUBSHELL
+declare _EP_SHELL_INIT_SUBSHELL
 
 # Protocol for this suite ("generic", or "suite")
-declare _BT_PROTOCOL
+declare _EP_PROTOCOL
 
 # If "true", the temporary directory was created by this suite
-declare _BT_TMPDIR_OWNER
+declare _EP_TMPDIR_OWNER
 # If "true", the logging system was set up by this suite
-declare _BT_LOG_OWNER
+declare _EP_LOG_OWNER
 
 # Skipped assertion counter
-declare _BT_COUNT_SKIPPED
+declare _EP_COUNT_SKIPPED
 # Passed assertion counter
-declare _BT_COUNT_PASSED
+declare _EP_COUNT_PASSED
 # Waived assertion counter
-declare _BT_COUNT_WAIVED
+declare _EP_COUNT_WAIVED
 # Failed assertion counter
-declare _BT_COUNT_FAILED
+declare _EP_COUNT_FAILED
 # Errored assertion counter
-declare _BT_COUNT_ERRORED
+declare _EP_COUNT_ERRORED
 # Panicked assertion counter
-declare _BT_COUNT_PANICKED
+declare _EP_COUNT_PANICKED
 # Aborted assertion counter
-declare _BT_COUNT_ABORTED
+declare _EP_COUNT_ABORTED
 
 # Initialize a (sub)shell.
-function _bt_shell_init()
+function _ep_shell_init()
 {
     # Exit immediately, if a simple command exits with non-zero status
     set -o errexit
@@ -99,32 +99,32 @@ function _bt_shell_init()
     # Needed for DEBUG trap propagation and BASH_ARGV/BASH_ARGC.
     shopt -s extdebug
 
-    if [ "$BASH_SUBSHELL" == "${_BT_SHELL_INIT_SUBSHELL:-}" ]; then
-        bt_abort "Re-initializing a (sub)shell"
+    if [ "$BASH_SUBSHELL" == "${_EP_SHELL_INIT_SUBSHELL:-}" ]; then
+        ep_abort "Re-initializing a (sub)shell"
     fi
 
     # Last initialized subshell depth
-    _BT_SHELL_INIT_SUBSHELL="$BASH_SUBSHELL"
+    _EP_SHELL_INIT_SUBSHELL="$BASH_SUBSHELL"
 
-    # Set PID that bt_abort should send SIGABRT to - the PID of the (sub)shell
+    # Set PID that ep_abort should send SIGABRT to - the PID of the (sub)shell
     # being initialized, if can be retrieved
     if [ -n "${BASHPID+set}" ]; then
-        BT_ABORT_PID="$BASHPID"
+        EP_ABORT_PID="$BASHPID"
     elif [ -r /proc/self/stat ]; then
         declare discard
-        read -r BT_ABORT_PID discard < /proc/self/stat
+        read -r EP_ABORT_PID discard < /proc/self/stat
     fi
 
-    bt_abort_assert bt_bool_is_valid "${_BT_SKIPPED-false}"
+    ep_abort_assert ep_bool_is_valid "${_EP_SKIPPED-false}"
 
     # If entering a skipped assertion shell
-    if ${_BT_SKIPPED:-false}; then
+    if ${_EP_SKIPPED:-false}; then
         exit 0
     fi
 }
 
 # Output usage information
-function _bt_usage()
+function _ep_usage()
 {
     echo "\
 Usage: `basename \"\$0\"` [OPTION]... [PATTERN]... [-- [SUITE_ARG]...]
@@ -171,17 +171,17 @@ Any arguments specified after \"--\" are passed to the suite.
 }
 
 # Parse command line arguments, extracting framework-specific arguments and
-# storing suite arguments in BT_SUITE_ARGS array.
+# storing suite arguments in EP_SUITE_ARGS array.
 # Args: [arg...]
-function _bt_parse_args()
+function _ep_parse_args()
 {
-    _BT_LOG_FILE=
-    _BT_LOG_FILTER=true
-    _BT_LOG_FILTER_LEVEL="TRACE"
-    _BT_LOG_FILTER_TOP="0"
-    _BT_LOG_FILTER_BOTTOM="-1"
-    _BT_LOG_FILTER_STATUS="PASSED"
-    _BT_LOG_COOK=true
+    _EP_LOG_FILE=
+    _EP_LOG_FILTER=true
+    _EP_LOG_FILTER_LEVEL="TRACE"
+    _EP_LOG_FILTER_TOP="0"
+    _EP_LOG_FILTER_BOTTOM="-1"
+    _EP_LOG_FILTER_STATUS="PASSED"
+    _EP_LOG_COOK=true
 
     # Collect framework arguments
     declare args=()
@@ -195,7 +195,7 @@ function _bt_parse_args()
     done
 
     # Store suite arguments
-    BT_SUITE_ARGS=("$@")
+    EP_SUITE_ARGS=("$@")
 
     # If there are no framework arguments
     if [ "${#args[@]}" == 0 ]; then
@@ -219,39 +219,39 @@ function _bt_parse_args()
     while true; do
         case "$1" in
             -h|--help)
-                _bt_usage; exit 0;;
+                _ep_usage; exit 0;;
             -l|--log-file)
-                _BT_LOG_FILE="$2";                    shift 2;;
+                _EP_LOG_FILE="$2";                    shift 2;;
             -i|--include)
-                bt_glob_var_or BT_INCLUDE       "$2"; shift 2;;
+                ep_glob_var_or EP_INCLUDE       "$2"; shift 2;;
             -e|--exclude|--dont-include)
-                bt_glob_var_or BT_DONT_INCLUDE  "$2"; shift 2;;
+                ep_glob_var_or EP_DONT_INCLUDE  "$2"; shift 2;;
             -c|--claim)
-                bt_glob_var_or BT_CLAIM         "$2"; shift 2;;
+                ep_glob_var_or EP_CLAIM         "$2"; shift 2;;
             --dont-claim)
-                bt_glob_var_or BT_DONT_CLAIM    "$2"; shift 2;;
+                ep_glob_var_or EP_DONT_CLAIM    "$2"; shift 2;;
             --enable)
-                bt_glob_var_or BT_ENABLE        "$2"; shift 2;;
+                ep_glob_var_or EP_ENABLE        "$2"; shift 2;;
             --dont-enable)
-                bt_glob_var_or BT_DONT_ENABLE   "$2"; shift 2;;
+                ep_glob_var_or EP_DONT_ENABLE   "$2"; shift 2;;
             --filter-level)
                 # TODO Validate value
-                _BT_LOG_FILTER_LEVEL="$2";            shift 2;;
+                _EP_LOG_FILTER_LEVEL="$2";            shift 2;;
             --filter-top)
                 # TODO Validate value
-                _BT_LOG_FILTER_TOP="$2";              shift 2;;
+                _EP_LOG_FILTER_TOP="$2";              shift 2;;
             --filter-bottom)
                 # TODO Validate value
-                _BT_LOG_FILTER_BOTTOM="$2";           shift 2;;
+                _EP_LOG_FILTER_BOTTOM="$2";           shift 2;;
             --filter-status)
                 # TODO Validate value
-                _BT_LOG_FILTER_STATUS="$2";           shift 2;;
+                _EP_LOG_FILTER_STATUS="$2";           shift 2;;
             -u|--unfiltered)
-                _BT_LOG_FILTER=false;                 shift;;
+                _EP_LOG_FILTER=false;                 shift;;
             -r|--raw)
-                _BT_LOG_COOK=false;                   shift;;
+                _EP_LOG_COOK=false;                   shift;;
             --) shift; break;;
-            *) bt_abort "Unknown option: $1";;
+            *) ep_abort "Unknown option: $1";;
         esac
     done
 
@@ -261,119 +261,119 @@ function _bt_parse_args()
             shift
             break
         fi
-        bt_glob_var_or BT_INCLUDE "$1"
+        ep_glob_var_or EP_INCLUDE "$1"
         shift
     done
 }
 
 # Initialize a suite shell, parse command line arguments, extracting
-# framework-specific arguments and storing suite arguments in BT_SUITE_ARGS
+# framework-specific arguments and storing suite arguments in EP_SUITE_ARGS
 # array.
 # Args: [cmdline_arg...]
-function bt_suite_init()
+function ep_suite_init()
 {
     # Initialize a generic shell
-    _bt_shell_init
+    _ep_shell_init
 
     # Parse command line arguments
-    _bt_parse_args "$@"
+    _ep_parse_args "$@"
 
-    # Verify BT_PROTOCOL value
-    if [ -n "${BT_PROTOCOL:-}" ] &&
-       [ "$BT_PROTOCOL" != "generic" ] && [ "$BT_PROTOCOL" != "suite" ]; then
-        echo "Invalid value of BT_PROTOCOL environment variable:" \
-             "\"$BT_PROTOCOL\","
+    # Verify EP_PROTOCOL value
+    if [ -n "${EP_PROTOCOL:-}" ] &&
+       [ "$EP_PROTOCOL" != "generic" ] && [ "$EP_PROTOCOL" != "suite" ]; then
+        echo "Invalid value of EP_PROTOCOL environment variable:" \
+             "\"$EP_PROTOCOL\","
              "expecting \"suite\", \"generic\", or nothing" >&2
         exit 127
     fi
 
-    _BT_PROTOCOL="${BT_PROTOCOL:-generic}"
-    _BT_NAME_STACK="${_BT_NAME_STACK:-}"
-    _BT_COUNT_SKIPPED=0
-    _BT_COUNT_PASSED=0
-    _BT_COUNT_WAIVED=0
-    _BT_COUNT_FAILED=0
-    _BT_COUNT_ERRORED=0
-    _BT_COUNT_PANICKED=0
-    _BT_COUNT_ABORTED=0
-    _BT_TEARDOWN_ARGC=()
-    _BT_TEARDOWN_ARGV=()
+    _EP_PROTOCOL="${EP_PROTOCOL:-generic}"
+    _EP_NAME_STACK="${_EP_NAME_STACK:-}"
+    _EP_COUNT_SKIPPED=0
+    _EP_COUNT_PASSED=0
+    _EP_COUNT_WAIVED=0
+    _EP_COUNT_FAILED=0
+    _EP_COUNT_ERRORED=0
+    _EP_COUNT_PANICKED=0
+    _EP_COUNT_ABORTED=0
+    _EP_TEARDOWN_ARGC=()
+    _EP_TEARDOWN_ARGV=()
 
     # Set EXIT trap as soon as possible to capture any internal errors
-    trap _bt_trap_exit EXIT
+    trap _ep_trap_exit EXIT
 
     # Set SIGABRT trap to capture aborts
-    trap _bt_trap_sigabrt SIGABRT
+    trap _ep_trap_sigabrt SIGABRT
 
     # Ask all sub-suites to use the suite protocol.
     # Exporting to all subprocesses unconditionally to prevent losing detailed
-    # state if a sub-suite is accidentally invoked with bt_test, instead of
-    # bt_suite.
-    BT_PROTOCOL=suite
+    # state if a sub-suite is accidentally invoked with ep_test, instead of
+    # ep_suite.
+    EP_PROTOCOL=suite
 
     # Create temporary directory, if none specified
-    if [ -z "${BT_TMPDIR+set}" ]; then
-        BT_TMPDIR=`mktemp -d -t bt.XXXXXXXXXX`
-        _BT_TMPDIR_OWNER=true
+    if [ -z "${EP_TMPDIR+set}" ]; then
+        EP_TMPDIR=`mktemp -d -t ep.XXXXXXXXXX`
+        _EP_TMPDIR_OWNER=true
     else
-        _BT_TMPDIR_OWNER=false
+        _EP_TMPDIR_OWNER=false
     fi
 
     # Setup logging, if not done yet
-    bt_abort_assert bt_bool_is_valid "${_BT_LOG_SETUP-false}"
-    if ! ${_BT_LOG_SETUP-false}; then
-        _bt_log_init
-        _BT_LOG_SETUP=true
-        _BT_LOG_OWNER=true
+    ep_abort_assert ep_bool_is_valid "${_EP_LOG_SETUP-false}"
+    if ! ${_EP_LOG_SETUP-false}; then
+        _ep_log_init
+        _EP_LOG_SETUP=true
+        _EP_LOG_OWNER=true
     else
-        _BT_LOG_OWNER=false
+        _EP_LOG_OWNER=false
     fi
 
-    _bt_log_msg "STRUCT ENTER '$_BT_NAME_STACK'"
+    _ep_log_msg "STRUCT ENTER '$_EP_NAME_STACK'"
 }
 
 # Cleanup a suite shell.
-function bt_suite_cleanup()
+function ep_suite_cleanup()
 {
-    unset -- "${_BT_EXPORT_LIST[@]}"
+    unset -- "${_EP_EXPORT_LIST[@]}"
     trap - SIGABRT
 }
 
 # Initialize a test shell.
-function bt_test_init()
+function ep_test_init()
 {
     # Initialize a generic shell
-    _bt_shell_init
+    _ep_shell_init
     # Cleanup the possible inherited suite shell
-    bt_suite_cleanup
+    ep_suite_cleanup
 }
 
 
 # Finalize the test suite.
 # Args: status
-function _bt_fini()
+function _ep_fini()
 {
     declare status="$1"
-    bt_abort_assert bt_status_is_valid "$status"
+    ep_abort_assert ep_status_is_valid "$status"
 
     trap - EXIT
 
-    _bt_log_msg "STRUCT EXIT  '$_BT_NAME_STACK' `bt_status_to_str $status`"
+    _ep_log_msg "STRUCT EXIT  '$_EP_NAME_STACK' `ep_status_to_str $status`"
 
     # Finish logging if this suite started it
-    if ${_BT_LOG_SETUP-false} && ${_BT_LOG_OWNER-false}; then
-        _bt_log_fini
-        _BT_LOG_SETUP=false
-        _BT_LOG_OWNER=false
+    if ${_EP_LOG_SETUP-false} && ${_EP_LOG_OWNER-false}; then
+        _ep_log_fini
+        _EP_LOG_SETUP=false
+        _EP_LOG_OWNER=false
     fi
 
     # Remove temporary directory, if created by this suite
-    if $_BT_TMPDIR_OWNER; then
-        rm -R "$BT_TMPDIR"
+    if $_EP_TMPDIR_OWNER; then
+        rm -R "$EP_TMPDIR"
     fi
 
-    if [ $_BT_PROTOCOL == generic ]; then
-        if [ "$status" -le $BT_STATUS_WAIVED ]; then
+    if [ $_EP_PROTOCOL == generic ]; then
+        if [ "$status" -le $EP_STATUS_WAIVED ]; then
             status=0
         else
             status=1
@@ -385,7 +385,7 @@ function _bt_fini()
 
 # Check if an assertion name is valid.
 # Args: name
-function bt_name_is_valid()
+function ep_name_is_valid()
 {
     declare -r name="$1"
     if [[ "$name" == *[^A-Za-z0-9_-]* ]]; then
@@ -397,7 +397,7 @@ function bt_name_is_valid()
 
 # Check if an assertion descriptive text is valid.
 # Args: text
-function bt_text_is_valid()
+function ep_text_is_valid()
 {
     declare -r text="$1"
     if [[ "$text" == *[[:cntrl:]]* ]]; then
@@ -410,18 +410,18 @@ function bt_text_is_valid()
 # Exit the suite immediately with PANICKED status, skipping (the rest of)
 # teardown, optionally outputting a message to stderr.
 # Args: [message...]
-function bt_panic()
+function ep_panic()
 {
     if [ $# != 0 ]; then
         echo "$@" >&2
     fi
-    _bt_fini $BT_STATUS_PANICKED
+    _ep_fini $EP_STATUS_PANICKED
 }
 
 # Exit the suite with ERRORED status, optionally outputting a message to
 # stderr.
 # Args: [message...]
-function bt_error()
+function ep_error()
 {
     if [ $# != 0 ]; then
         echo "$@" >&2
@@ -431,12 +431,12 @@ function bt_error()
 
 # Register an assertion status.
 # Args: status
-function _bt_register_status()
+function _ep_register_status()
 {
     declare -r status="$1"
     declare status_str
-    status_str=`bt_status_to_str "\$status"`
-    declare -r count_var="_BT_COUNT_$status_str"
+    status_str=`ep_status_to_str "\$status"`
+    declare -r count_var="_EP_COUNT_$status_str"
     eval "$count_var=$((count_var+1))"
 }
 
@@ -453,7 +453,7 @@ function _bt_register_status()
 #   -f, --failure=TEXT              Attach TEXT failure reason to the
 #                                   assertion.
 #
-function bt_test_begin()
+function ep_test_begin()
 {
     declare skipped=false
     declare waived=false
@@ -482,20 +482,20 @@ function bt_test_begin()
                 expected_status="$2";
                 if [[ "$expected_status" == "" ||
                       "$expected_status" == *[^" "0-9]* ]]; then
-                    bt_abort "Invalid -e/--expected-status option value: $2"
+                    ep_abort "Invalid -e/--expected-status option value: $2"
                 fi
                 shift 2
                 ;;
             -b|--brief)
-                if ! bt_text_is_valid "$2"; then
-                    bt_abort "Invalid -b/--brief option value: $2"
+                if ! ep_text_is_valid "$2"; then
+                    ep_abort "Invalid -b/--brief option value: $2"
                 fi
                 brief="$2"
                 shift 2
                 ;;
             -f|--failure)
-                if ! bt_text_is_valid "$2"; then
-                    bt_abort "Invalid -f/--failure option value: $2"
+                if ! ep_text_is_valid "$2"; then
+                    ep_abort "Invalid -f/--failure option value: $2"
                 fi
                 failure="$2"
                 shift 2
@@ -505,99 +505,99 @@ function bt_test_begin()
                 break
                 ;;
             *)
-                bt_abort "Unknown option: $1"
+                ep_abort "Unknown option: $1"
                 ;;
         esac
     done
 
     if [ $# == 0 ]; then
-        bt_abort "Invalid number of positional arguments"
+        ep_abort "Invalid number of positional arguments"
     fi
     declare -r name="$1"
     shift
-    bt_abort_assert bt_name_is_valid "$name"
+    ep_abort_assert ep_name_is_valid "$name"
 
     # "Enter" the assertion
-    bt_strstack_push _BT_NAME_STACK / "$name"
+    ep_strstack_push _EP_NAME_STACK / "$name"
 
     # Disable skipping if the path matches "ENABLE" filter
-    if bt_path_filter "$_BT_NAME_STACK" true ENABLE false; then
+    if ep_path_filter "$_EP_NAME_STACK" true ENABLE false; then
         skipped=false
     fi
 
     # Enable skipping if the path doesn't match "INCLUDE" filter
-    if ! bt_path_filter "$_BT_NAME_STACK" true INCLUDE true; then
+    if ! ep_path_filter "$_EP_NAME_STACK" true INCLUDE true; then
         skipped=true
     fi
 
     # Disable waiving if the path matches "CLAIM" filter
-    if bt_path_filter "$_BT_NAME_STACK" true CLAIM false; then
+    if ep_path_filter "$_EP_NAME_STACK" true CLAIM false; then
         waived=false
     fi
 
     # Export "skipped" flag, so if the command is skipped it could exit
     # immediately
-    _BT_SKIPPED="$skipped"
+    _EP_SKIPPED="$skipped"
 
-    # Export "waived" flag, so bt_test_end could ignore assertion status.
-    _BT_WAIVED="$waived"
+    # Export "waived" flag, so ep_test_end could ignore assertion status.
+    _EP_WAIVED="$waived"
 
     # Remember expected status - to be compared to the command exit status
-    _BT_EXPECTED_STATUS="$expected_status"
+    _EP_EXPECTED_STATUS="$expected_status"
 
     # Remember failure reason - to be logged on failure
-    _BT_FAILURE_REASON="$failure"
+    _EP_FAILURE_REASON="$failure"
 
-    _bt_log_msg "STRUCT BEGIN '$_BT_NAME_STACK'${brief:+ $brief}"
+    _ep_log_msg "STRUCT BEGIN '$_EP_NAME_STACK'${brief:+ $brief}"
 
     # Disable errexit so a failed command doesn't exit this shell
-    bt_attrs_push +o errexit
+    ep_attrs_push +o errexit
 }
 
 # Conclude a test execution.
-function bt_test_end()
+function ep_test_end()
 {
     # Grab the last status, first thing
     declare status=$?
     declare msg
     # Restore errexit state
-    bt_attrs_pop
+    ep_attrs_pop
 
-    bt_abort_assert [ ${_BT_EXPECTED_STATUS+set} ]
-    if [ $status == "$_BT_EXPECTED_STATUS" ]; then
-        status=$BT_STATUS_PASSED
+    ep_abort_assert [ ${_EP_EXPECTED_STATUS+set} ]
+    if [ $status == "$_EP_EXPECTED_STATUS" ]; then
+        status=$EP_STATUS_PASSED
     else
-        status=$BT_STATUS_FAILED
+        status=$EP_STATUS_FAILED
     fi
-    unset _BT_EXPECTED_STATUS
+    unset _EP_EXPECTED_STATUS
 
-    bt_abort_assert [ ${_BT_WAIVED+set} ]
-    if $_BT_WAIVED &&
-        (($status >= $BT_STATUS_PASSED && $status <= $BT_STATUS_FAILED)); then
-        status=$BT_STATUS_WAIVED
+    ep_abort_assert [ ${_EP_WAIVED+set} ]
+    if $_EP_WAIVED &&
+        (($status >= $EP_STATUS_PASSED && $status <= $EP_STATUS_FAILED)); then
+        status=$EP_STATUS_WAIVED
     fi
-    _BT_WAIVED=false
+    _EP_WAIVED=false
 
-    bt_abort_assert [ ${_BT_SKIPPED+set} ]
-    if $_BT_SKIPPED; then
-        status=$BT_STATUS_SKIPPED
+    ep_abort_assert [ ${_EP_SKIPPED+set} ]
+    if $_EP_SKIPPED; then
+        status=$EP_STATUS_SKIPPED
     fi
-    _BT_SKIPPED=false
+    _EP_SKIPPED=false
 
-    bt_abort_assert bt_status_is_valid $status
-    msg="STRUCT END   '$_BT_NAME_STACK' `bt_status_to_str $status`"
-    if [ $status == $BT_STATUS_WAIVED ] ||
-       [ $status == $BT_STATUS_FAILED ]; then
-        msg="$msg${_BT_FAILURE_REASON:+ $_BT_FAILURE_REASON}"
+    ep_abort_assert ep_status_is_valid $status
+    msg="STRUCT END   '$_EP_NAME_STACK' `ep_status_to_str $status`"
+    if [ $status == $EP_STATUS_WAIVED ] ||
+       [ $status == $EP_STATUS_FAILED ]; then
+        msg="$msg${_EP_FAILURE_REASON:+ $_EP_FAILURE_REASON}"
     fi
-    unset _BT_FAILURE_REASON
-    _bt_log_msg "$msg"
+    unset _EP_FAILURE_REASON
+    _ep_log_msg "$msg"
 
     # "Exit" the assertion
-    bt_strstack_pop _BT_NAME_STACK /
-    _bt_register_status $status
-    if [ $status -ge $BT_STATUS_PANICKED ]; then
-        _bt_fini $status
+    ep_strstack_pop _EP_NAME_STACK /
+    _ep_register_status $status
+    if [ $status -ge $EP_STATUS_PANICKED ]; then
+        _ep_fini $status
     fi
 }
 
@@ -614,7 +614,7 @@ function bt_test_end()
 #   -f, --failure=TEXT              Attach TEXT failure reason to the
 #                                   assertion.
 #
-function bt_test()
+function ep_test()
 {
     declare disabled=false
     declare waived=false
@@ -644,20 +644,20 @@ function bt_test()
                 expected_status="$2";
                 if [[ "$expected_status" == "" ||
                       "$expected_status" == *[^" "0-9]* ]]; then
-                    bt_abort "Invalid -e/--expected-status option value: $2"
+                    ep_abort "Invalid -e/--expected-status option value: $2"
                 fi
                 shift 2
                 ;;
             -b|--brief)
-                if ! bt_text_is_valid "$2"; then
-                    bt_abort "Invalid -b/--brief option value: $2"
+                if ! ep_text_is_valid "$2"; then
+                    ep_abort "Invalid -b/--brief option value: $2"
                 fi
                 brief="$2"
                 shift 2
                 ;;
             -f|--failure)
-                if ! bt_text_is_valid "$2"; then
-                    bt_abort "Invalid -f/--failure option value: $2"
+                if ! ep_text_is_valid "$2"; then
+                    ep_abort "Invalid -f/--failure option value: $2"
                 fi
                 failure="$2"
                 shift 2
@@ -667,17 +667,17 @@ function bt_test()
                 break
                 ;;
             *)
-                bt_abort "Unknown option: $1"
+                ep_abort "Unknown option: $1"
                 ;;
         esac
     done
 
     if [ $# == 0 ]; then
-        bt_abort "Invalid number of positional arguments"
+        ep_abort "Invalid number of positional arguments"
     fi
     declare -r name="$1"
     shift
-    bt_abort_assert bt_name_is_valid "$name"
+    ep_abort_assert ep_name_is_valid "$name"
 
     if $disabled; then
         begin_args[${#begin_args[@]}]="--disabled"
@@ -705,11 +705,11 @@ function bt_test()
     begin_args[${#begin_args[@]}]="--"
     begin_args[${#begin_args[@]}]="$name"
 
-    bt_test_begin "${begin_args[@]}"
+    ep_test_begin "${begin_args[@]}"
     if ! $disabled; then
         "$@"
     fi
-    bt_test_end
+    ep_test_end
 }
 
 # Setup a suite execution.
@@ -724,7 +724,7 @@ function bt_test()
 #   -f, --failure=TEXT              Attach TEXT failure reason to the
 #                                   assertion.
 #
-function bt_suite_begin()
+function ep_suite_begin()
 {
     declare skipped=false
     declare waived=false
@@ -748,15 +748,15 @@ function bt_suite_begin()
                 shift
                 ;;
             -b|--brief)
-                if ! bt_text_is_valid "$2"; then
-                    bt_abort "Invalid -b/--brief option value: $2"
+                if ! ep_text_is_valid "$2"; then
+                    ep_abort "Invalid -b/--brief option value: $2"
                 fi
                 brief="$2"
                 shift 2
                 ;;
             -f|--failure)
-                if ! bt_text_is_valid "$2"; then
-                    bt_abort "Invalid -f/--failure option value: $2"
+                if ! ep_text_is_valid "$2"; then
+                    ep_abort "Invalid -f/--failure option value: $2"
                 fi
                 failure="$2"
                 shift 2
@@ -766,88 +766,88 @@ function bt_suite_begin()
                 break
                 ;;
             *)
-                bt_abort "Unknown option: $1"
+                ep_abort "Unknown option: $1"
                 ;;
         esac
     done
 
     if [ $# != 1 ]; then
-        bt_abort "Invalid number of positional arguments"
+        ep_abort "Invalid number of positional arguments"
     fi
     declare -r name="$1"
     shift
-    bt_abort_assert bt_name_is_valid "$name"
+    ep_abort_assert ep_name_is_valid "$name"
 
     # "Enter" the assertion
-    bt_strstack_push _BT_NAME_STACK / "$name"
+    ep_strstack_push _EP_NAME_STACK / "$name"
 
     # Disable skipping if path matches "ENABLE" filter
-    if bt_path_filter "$_BT_NAME_STACK" false ENABLE false; then
+    if ep_path_filter "$_EP_NAME_STACK" false ENABLE false; then
         skipped=false
     fi
 
     # Enable skipping if path doesn't match "INCLUDE" filter
-    if ! bt_path_filter "$_BT_NAME_STACK" false INCLUDE true; then
+    if ! ep_path_filter "$_EP_NAME_STACK" false INCLUDE true; then
         skipped=true
     fi
 
     # Disable waiving if path matches "CLAIM" filter
-    if bt_path_filter "$_BT_NAME_STACK" false CLAIM false; then
+    if ep_path_filter "$_EP_NAME_STACK" false CLAIM false; then
         waived=false
     fi
 
     # Export "skipped" flag, so if the command is skipped it could exit
     # immediately
-    _BT_SKIPPED="$skipped"
+    _EP_SKIPPED="$skipped"
 
-    # Export "waived" flag, so bt_suite_end could ignore assertion status.
-    _BT_WAIVED="$waived"
+    # Export "waived" flag, so ep_suite_end could ignore assertion status.
+    _EP_WAIVED="$waived"
 
     # Remember failure reason - to be logged on failure
-    _BT_FAILURE_REASON="$failure"
+    _EP_FAILURE_REASON="$failure"
 
-    _bt_log_msg "STRUCT BEGIN '$_BT_NAME_STACK'${brief:+ $brief}"
+    _ep_log_msg "STRUCT BEGIN '$_EP_NAME_STACK'${brief:+ $brief}"
 
     # Disable errexit so a failed command doesn't exit this shell
-    bt_attrs_push +o errexit
+    ep_attrs_push +o errexit
 }
 
 # Conclude a suite execution.
-function bt_suite_end()
+function ep_suite_end()
 {
     # Grab the last status, first thing
     declare status=$?
     declare msg
     # Restore errexit state
-    bt_attrs_pop
+    ep_attrs_pop
 
-    bt_abort_assert [ ${_BT_WAIVED+set} ]
-    if $_BT_WAIVED &&
-        (($status >= $BT_STATUS_PASSED && $status <= $BT_STATUS_FAILED)); then
-        status=$BT_STATUS_WAIVED
+    ep_abort_assert [ ${_EP_WAIVED+set} ]
+    if $_EP_WAIVED &&
+        (($status >= $EP_STATUS_PASSED && $status <= $EP_STATUS_FAILED)); then
+        status=$EP_STATUS_WAIVED
     fi
-    _BT_WAIVED=false
+    _EP_WAIVED=false
 
-    bt_abort_assert [ ${_BT_SKIPPED+set} ]
-    if $_BT_SKIPPED; then
-        status=$BT_STATUS_SKIPPED
+    ep_abort_assert [ ${_EP_SKIPPED+set} ]
+    if $_EP_SKIPPED; then
+        status=$EP_STATUS_SKIPPED
     fi
-    _BT_SKIPPED=false
+    _EP_SKIPPED=false
 
-    bt_abort_assert bt_status_is_valid $status
-    msg="STRUCT END   '$_BT_NAME_STACK' `bt_status_to_str $status`"
-    if [ $status == $BT_STATUS_WAIVED ] ||
-       [ $status == $BT_STATUS_FAILED ]; then
-        msg="$msg${_BT_FAILURE_REASON:+ $_BT_FAILURE_REASON}"
+    ep_abort_assert ep_status_is_valid $status
+    msg="STRUCT END   '$_EP_NAME_STACK' `ep_status_to_str $status`"
+    if [ $status == $EP_STATUS_WAIVED ] ||
+       [ $status == $EP_STATUS_FAILED ]; then
+        msg="$msg${_EP_FAILURE_REASON:+ $_EP_FAILURE_REASON}"
     fi
-    unset _BT_FAILURE_REASON
-    _bt_log_msg "$msg"
+    unset _EP_FAILURE_REASON
+    _ep_log_msg "$msg"
 
     # "Exit" the assertion
-    bt_strstack_pop _BT_NAME_STACK /
-    _bt_register_status $status
-    if [ $status -ge $BT_STATUS_PANICKED ]; then
-        _bt_fini $status
+    ep_strstack_pop _EP_NAME_STACK /
+    _ep_register_status $status
+    if [ $status -ge $EP_STATUS_PANICKED ]; then
+        _ep_fini $status
     fi
 }
 
@@ -863,7 +863,7 @@ function bt_suite_end()
 #   -f, --failure=TEXT              Attach TEXT failure reason to the
 #                                   assertion.
 #
-function bt_suite()
+function ep_suite()
 {
     declare disabled=false
     declare waived=false
@@ -889,15 +889,15 @@ function bt_suite()
                 shift
                 ;;
             -b|--brief)
-                if ! bt_text_is_valid "$2"; then
-                    bt_abort "Invalid -b/--brief option value: $2"
+                if ! ep_text_is_valid "$2"; then
+                    ep_abort "Invalid -b/--brief option value: $2"
                 fi
                 brief="$2"
                 shift 2
                 ;;
             -f|--failure)
-                if ! bt_text_is_valid "$2"; then
-                    bt_abort "Invalid -f/--failure option value: $2"
+                if ! ep_text_is_valid "$2"; then
+                    ep_abort "Invalid -f/--failure option value: $2"
                 fi
                 failure="$2"
                 shift 2
@@ -907,17 +907,17 @@ function bt_suite()
                 break
                 ;;
             *)
-                bt_abort "Unknown option: $1"
+                ep_abort "Unknown option: $1"
                 ;;
         esac
     done
 
     if [ $# == 0 ]; then
-        bt_abort "Invalid number of positional arguments"
+        ep_abort "Invalid number of positional arguments"
     fi
     declare -r name="$1"
     shift
-    bt_abort_assert bt_name_is_valid "$name"
+    ep_abort_assert ep_name_is_valid "$name"
 
     if $disabled; then
         begin_args[${#begin_args[@]}]="--disabled"
@@ -940,64 +940,64 @@ function bt_suite()
     begin_args[${#begin_args[@]}]="--"
     begin_args[${#begin_args[@]}]="$name"
 
-    bt_suite_begin "${begin_args[@]}"
+    ep_suite_begin "${begin_args[@]}"
     if [ $# != 0 ]; then
         "$@"
     else
         (
-            bt_suite_init
+            ep_suite_init
         )
     fi
-    bt_suite_end
+    ep_suite_end
 }
 
 # Handle EXIT trap
-function _bt_trap_exit()
+function _ep_trap_exit()
 {
     # Grab the last status, first thing
     declare status="$?"
     declare teardown_status=
 
     # Execute teardown in a subshell
-    bt_attrs_push +o errexit
+    ep_attrs_push +o errexit
     (
-        bt_attrs_pop
-        bt_teardown_exec_all
+        ep_attrs_pop
+        ep_teardown_exec_all
     )
     teardown_status=$?
-    bt_attrs_pop
+    ep_attrs_pop
 
     # If teardown failed
     if [ $teardown_status != 0 ]; then
-        status=$BT_STATUS_PANICKED
+        status=$EP_STATUS_PANICKED
     # else, if exiting with failure
-    elif [ $status != 0 ] || [ $_BT_COUNT_ERRORED != 0 ]; then
-        status=$BT_STATUS_ERRORED
+    elif [ $status != 0 ] || [ $_EP_COUNT_ERRORED != 0 ]; then
+        status=$EP_STATUS_ERRORED
     # else, if there were failed assertions
-    elif [ $_BT_COUNT_FAILED != 0 ]; then
-        status=$BT_STATUS_FAILED
+    elif [ $_EP_COUNT_FAILED != 0 ]; then
+        status=$EP_STATUS_FAILED
     # else, if there were waived assertions
-    elif [ $_BT_COUNT_WAIVED != 0 ]; then
-        status=$BT_STATUS_WAIVED
+    elif [ $_EP_COUNT_WAIVED != 0 ]; then
+        status=$EP_STATUS_WAIVED
     # else, if there were passed assertions
-    elif [ $_BT_COUNT_PASSED != 0 ]; then
-        status=$BT_STATUS_PASSED
+    elif [ $_EP_COUNT_PASSED != 0 ]; then
+        status=$EP_STATUS_PASSED
     # else, if there were skipped assertions
-    elif [ $_BT_COUNT_SKIPPED != 0 ]; then
-        status=$BT_STATUS_SKIPPED
+    elif [ $_EP_COUNT_SKIPPED != 0 ]; then
+        status=$EP_STATUS_SKIPPED
     else
-        status=$BT_STATUS_PASSED
+        status=$EP_STATUS_PASSED
     fi
 
-    _bt_fini $status
+    _ep_fini $status
 }
 
 # Handle SIGABRT
-function _bt_trap_sigabrt()
+function _ep_trap_sigabrt()
 {
     trap - SIGABRT
-    bt_backtrace 1 >&2
-    _bt_fini $BT_STATUS_ABORTED
+    ep_backtrace 1 >&2
+    _ep_fini $EP_STATUS_ABORTED
 }
 
-fi # _BT_SH
+fi # _EP_SH

@@ -8,159 +8,159 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-. bt.sh
-bt_suite_init "$@"
+. ep.sh
+ep_suite_init "$@"
 
 # Test an exit status assertion
 # Args: status_suffix name
-# Input: test suite script without bt_suite_init.sh sourcing
+# Input: test suite script without ep_suite_init.sh sourcing
 function t()
 {
     declare -r name="$1"
     declare -r status_suffix="$2"
-    declare -r status_name="BT_STATUS_`echo $status_suffix | tr a-z A-Z`"
+    declare -r status_name="EP_STATUS_`echo $status_suffix | tr a-z A-Z`"
 
-    bt_test_begin -e "${!status_name}" "$name"; (
-        bt_test_init
+    ep_test_begin -e "${!status_name}" "$name"; (
+        ep_test_init
         {
-            echo ". bt.sh"
-            echo "bt_suite_init"
+            echo ". ep.sh"
+            echo "ep_suite_init"
             cat
-        } | BT_PROTOCOL=suite bash >/dev/null || exit $?
-    ); bt_test_end
+        } | EP_PROTOCOL=suite bash >/dev/null || exit $?
+    ); ep_test_end
 }
 
 t empty PASSED <<<"
 "
 
-bt_suite_begin setup; (
-    bt_suite_init
+ep_suite_begin setup; (
+    ep_suite_init
 
-    bt_suite_begin one; (
-        bt_suite_init
+    ep_suite_begin one; (
+        ep_suite_init
         t ok      PASSED    <<<"true"
         t fail    ERRORED   <<<"false"
-    ); bt_suite_end
+    ); ep_suite_end
 
-    bt_suite_begin two; (
-        bt_suite_init
+    ep_suite_begin two; (
+        ep_suite_init
         t fail_fail       ERRORED   <<<"false;  false"
         t fail_ok         ERRORED   <<<"false;  true"
         t ok_fail         ERRORED   <<<"true;   false"
         t ok_ok           PASSED    <<<"true;   true"
-    ); bt_suite_end
-); bt_suite_end
+    ); ep_suite_end
+); ep_suite_end
 
-bt_suite_begin teardown; (
-    bt_suite_init
+ep_suite_begin teardown; (
+    ep_suite_init
 
-    bt_suite_begin one; (
-        bt_suite_init
-        t ok      PASSED    <<<"bt_teardown_push true"
-        t fail    PANICKED  <<<"bt_teardown_push false"
-    ); bt_suite_end
+    ep_suite_begin one; (
+        ep_suite_init
+        t ok      PASSED    <<<"ep_teardown_push true"
+        t fail    PANICKED  <<<"ep_teardown_push false"
+    ); ep_suite_end
 
-    bt_suite_begin two; (
-        bt_suite_init
+    ep_suite_begin two; (
+        ep_suite_init
         t fail_fail       PANICKED  <<<"
-            bt_teardown_push false; bt_teardown_push false"
+            ep_teardown_push false; ep_teardown_push false"
         t fail_ok         PANICKED  <<<"
-            bt_teardown_push false; bt_teardown_push true"
+            ep_teardown_push false; ep_teardown_push true"
         t ok_fail         PANICKED  <<<"
-            bt_teardown_push true;  bt_teardown_push false"
+            ep_teardown_push true;  ep_teardown_push false"
         t ok_ok           PASSED    <<<"
-            bt_teardown_push true;  bt_teardown_push true"
-    ); bt_suite_end
-); bt_suite_end
+            ep_teardown_push true;  ep_teardown_push true"
+    ); ep_suite_end
+); ep_suite_end
 
-bt_suite_begin setup_teardown; (
-    bt_suite_init
-    t ok_ok       PASSED    <<<"true;   bt_teardown_push true"
-    t fail_ok     ERRORED   <<<"false;  bt_teardown_push true"
-    t ok_fail     PANICKED  <<<"true;   bt_teardown_push false"
-    t fail_fail   ERRORED   <<<"false;  bt_teardown_push false"
-); bt_suite_end
+ep_suite_begin setup_teardown; (
+    ep_suite_init
+    t ok_ok       PASSED    <<<"true;   ep_teardown_push true"
+    t fail_ok     ERRORED   <<<"false;  ep_teardown_push true"
+    t ok_fail     PANICKED  <<<"true;   ep_teardown_push false"
+    t fail_fail   ERRORED   <<<"false;  ep_teardown_push false"
+); ep_suite_end
 
-bt_suite_begin teardown_setup; (
-    bt_suite_init
-    t ok_ok       PASSED    <<<"bt_teardown_push true;  true"
-    t fail_ok     PANICKED  <<<"bt_teardown_push false; true"
-    t ok_fail     ERRORED   <<<"bt_teardown_push true;  false"
-    t fail_fail   PANICKED  <<<"bt_teardown_push false; false"
-); bt_suite_end
+ep_suite_begin teardown_setup; (
+    ep_suite_init
+    t ok_ok       PASSED    <<<"ep_teardown_push true;  true"
+    t fail_ok     PANICKED  <<<"ep_teardown_push false; true"
+    t ok_fail     ERRORED   <<<"ep_teardown_push true;  false"
+    t fail_fail   PANICKED  <<<"ep_teardown_push false; false"
+); ep_suite_end
 
-bt_suite_begin test; (
-    bt_suite_init
+ep_suite_begin test; (
+    ep_suite_init
 
-    t no_args   ABORTED <<<"bt_test" 2>/dev/null
+    t no_args   ABORTED <<<"ep_test" 2>/dev/null
 
-    bt_suite_begin options; (
-        bt_suite_init
-        t none                  PASSED  <<<"bt_test               1"
-        t w                     WAIVED  <<<"bt_test -w            1"
-        t waived                WAIVED  <<<"bt_test --waived      1"
-        t s                     SKIPPED <<<"bt_test -d            1"
-        t skipped               SKIPPED <<<"bt_test --disabled    1"
-        t e0                    PASSED  <<<"bt_test -e0           1   true"
-        t e1                    PASSED  <<<"bt_test -e1           1   false"
-        t expected_eq_0         PASSED  <<<"bt_test --expected=0  1   true"
-        t expected_eq_1         PASSED  <<<"bt_test --expected=1  1   false"
-    ); bt_suite_end
+    ep_suite_begin options; (
+        ep_suite_init
+        t none                  PASSED  <<<"ep_test               1"
+        t w                     WAIVED  <<<"ep_test -w            1"
+        t waived                WAIVED  <<<"ep_test --waived      1"
+        t s                     SKIPPED <<<"ep_test -d            1"
+        t skipped               SKIPPED <<<"ep_test --disabled    1"
+        t e0                    PASSED  <<<"ep_test -e0           1   true"
+        t e1                    PASSED  <<<"ep_test -e1           1   false"
+        t expected_eq_0         PASSED  <<<"ep_test --expected=0  1   true"
+        t expected_eq_1         PASSED  <<<"ep_test --expected=1  1   false"
+    ); ep_suite_end
 
-    bt_suite_begin one; (
-        bt_suite_init
-        t empty                 PASSED  <<<"bt_test       1"
-        t empty_waived          WAIVED  <<<"bt_test -w    1"
-        t empty_skipped         SKIPPED <<<"bt_test -d    1"
-        t empty_waived_skipped  SKIPPED <<<"bt_test -w -d 1"
-        t ok                    PASSED  <<<"bt_test       1 true"
-        t ok_waived             WAIVED  <<<"bt_test -w    1 true"
-        t ok_skipped            SKIPPED <<<"bt_test -d    1 true"
-        t ok_waived_skipped     SKIPPED <<<"bt_test -w -d 1 true"
-        t failed                FAILED  <<<"bt_test       1 false"
-        t failed_waived         WAIVED  <<<"bt_test -w    1 false"
-        t failed_waived_skipped SKIPPED <<<"bt_test -w -d 1 false"
-        t failed_skipped        SKIPPED <<<"bt_test -d    1 false"
-    ); bt_suite_end
+    ep_suite_begin one; (
+        ep_suite_init
+        t empty                 PASSED  <<<"ep_test       1"
+        t empty_waived          WAIVED  <<<"ep_test -w    1"
+        t empty_skipped         SKIPPED <<<"ep_test -d    1"
+        t empty_waived_skipped  SKIPPED <<<"ep_test -w -d 1"
+        t ok                    PASSED  <<<"ep_test       1 true"
+        t ok_waived             WAIVED  <<<"ep_test -w    1 true"
+        t ok_skipped            SKIPPED <<<"ep_test -d    1 true"
+        t ok_waived_skipped     SKIPPED <<<"ep_test -w -d 1 true"
+        t failed                FAILED  <<<"ep_test       1 false"
+        t failed_waived         WAIVED  <<<"ep_test -w    1 false"
+        t failed_waived_skipped SKIPPED <<<"ep_test -w -d 1 false"
+        t failed_skipped        SKIPPED <<<"ep_test -d    1 false"
+    ); ep_suite_end
 
-    bt_suite_begin two; (
-        bt_suite_init
+    ep_suite_begin two; (
+        ep_suite_init
         t fail_fail       FAILED    <<<"
-            bt_test       1 false;    bt_test       2 false"
+            ep_test       1 false;    ep_test       2 false"
         t fail_waive      FAILED    <<<"
-            bt_test       1 false;    bt_test -w    2 true"
+            ep_test       1 false;    ep_test -w    2 true"
         t fail_ok         FAILED    <<<"
-            bt_test       1 false;    bt_test       2 true"
+            ep_test       1 false;    ep_test       2 true"
 
         t waive_fail      FAILED    <<<"
-            bt_test -w    1 true;     bt_test       2 false"
+            ep_test -w    1 true;     ep_test       2 false"
         t waive_waive     WAIVED    <<<"
-            bt_test -w    1 true;     bt_test -w    2 true"
+            ep_test -w    1 true;     ep_test -w    2 true"
         t waive_ok        WAIVED    <<<"
-            bt_test -w    1 true;     bt_test -w    2 true"
+            ep_test -w    1 true;     ep_test -w    2 true"
 
         t ok_fail         FAILED    <<<"
-            bt_test       1 true;     bt_test       2 false"
+            ep_test       1 true;     ep_test       2 false"
         t ok_waive        WAIVED    <<<"
-            bt_test       1 true;     bt_test -w    2 true"
+            ep_test       1 true;     ep_test -w    2 true"
         t ok_ok           PASSED    <<<"
-            bt_test       1 true;     bt_test       2 true"
-    ); bt_suite_end
-); bt_suite_end
+            ep_test       1 true;     ep_test       2 true"
+    ); ep_suite_end
+); ep_suite_end
 
-bt_suite_begin suite; (
-    bt_suite_init
+ep_suite_begin suite; (
+    ep_suite_init
 
-    bt_suite_begin one; (
-        bt_suite_init
-        bt_suite_begin executable; (
-            bt_suite_init
-            t empty         PASSED    <<<"bt_suite       1"
-            t empty_waived  WAIVED    <<<"bt_suite -w    1"
-        ); bt_suite_end
+    ep_suite_begin one; (
+        ep_suite_init
+        ep_suite_begin executable; (
+            ep_suite_init
+            t empty         PASSED    <<<"ep_suite       1"
+            t empty_waived  WAIVED    <<<"ep_suite -w    1"
+        ); ep_suite_end
 
-        bt_suite_begin inline; (
-            bt_suite_init
+        ep_suite_begin inline; (
+            ep_suite_init
 
             declare mask
             declare opts
@@ -168,21 +168,21 @@ bt_suite_begin suite; (
             declare status
             declare script_var
             declare -r script_empty=""
-            declare -r script_skipped="bt_test -d 1"
-            declare -r script_passed="bt_test 1 true"
-            declare -r script_waived="bt_test -w 1"
-            declare -r script_failed="bt_test 1 false"
+            declare -r script_skipped="ep_test -d 1"
+            declare -r script_passed="ep_test 1 true"
+            declare -r script_waived="ep_test -w 1"
+            declare -r script_failed="ep_test 1 false"
             declare -r script_errored="false"
-            declare -r script_panicked="bt_teardown_push false"
-            declare -r script_aborted="bt_abort"
+            declare -r script_panicked="ep_teardown_push false"
+            declare -r script_aborted="ep_abort"
 
             while read mask opts script status; do
                 script_var="script_$script"
                 t ${mask}_${script} $status <<<"
-                    bt_suite_begin $opts 1; (
-                        bt_suite_init
+                    ep_suite_begin $opts 1; (
+                        ep_suite_init
                         ${!script_var}
-                    ); bt_suite_end"
+                    ); ep_suite_end"
             done <<<"\
                 asis        --  empty       PASSED
                 asis        --  skipped     SKIPPED
@@ -208,7 +208,7 @@ bt_suite_begin suite; (
                 disabled    -d  errored     SKIPPED
                 disabled    -d  panicked    SKIPPED
                 disabled    -d  aborted     SKIPPED"
-        ); bt_suite_end
-    ); bt_suite_end
+        ); ep_suite_end
+    ); ep_suite_end
 
-); bt_suite_end
+); ep_suite_end

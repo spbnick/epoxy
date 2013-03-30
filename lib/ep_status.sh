@@ -7,57 +7,57 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-if [ -z ${_BT_STATUS_SH+set} ]; then
-declare -r _BT_STATUS_SH=
+if [ -z ${_EP_STATUS_SH+set} ]; then
+declare -r _EP_STATUS_SH=
 
-. bt_util.sh
+. ep_util.sh
 
 #
 # Status codes
 #
 # Skipped
-declare -r BT_STATUS_SKIPPED=1
+declare -r EP_STATUS_SKIPPED=1
 # Passed
-declare -r BT_STATUS_PASSED=2
+declare -r EP_STATUS_PASSED=2
 # Waived
-declare -r BT_STATUS_WAIVED=3
+declare -r EP_STATUS_WAIVED=3
 # Failed
-declare -r BT_STATUS_FAILED=4
+declare -r EP_STATUS_FAILED=4
 # A setup error occurred
-declare -r BT_STATUS_ERRORED=5
+declare -r EP_STATUS_ERRORED=5
 # A cleanup error occurred
-declare -r BT_STATUS_PANICKED=6
+declare -r EP_STATUS_PANICKED=6
 # A coding error occurred
-declare -r BT_STATUS_ABORTED=7
+declare -r EP_STATUS_ABORTED=7
 
 # Check if a status code is valid
 # Args: status
-function bt_status_is_valid()
+function ep_status_is_valid()
 {
     declare -r status="$1"
     [[ "$status" != "" &&
        "$status" != [^0-9] && \
-       "$status" -ge $BT_STATUS_SKIPPED && \
-       "$status" -le $BT_STATUS_ABORTED ]]
+       "$status" -ge $EP_STATUS_SKIPPED && \
+       "$status" -le $EP_STATUS_ABORTED ]]
 }
 
 # Convert status code to string
 # Args: status_code
 # Output: status string
-function bt_status_to_str()
+function ep_status_to_str()
 {
     declare -r status="$1"
 
     case "$status" in
-        $BT_STATUS_SKIPPED)     echo SKIPPED;;
-        $BT_STATUS_PASSED)      echo PASSED;;
-        $BT_STATUS_WAIVED)      echo WAIVED;;
-        $BT_STATUS_FAILED)      echo FAILED;;
-        $BT_STATUS_ERRORED)     echo ERRORED;;
-        $BT_STATUS_PANICKED)    echo PANICKED;;
-        $BT_STATUS_ABORTED)     echo ABORTED;;
-        *) bt_abort "Invalid status code: $status";;
+        $EP_STATUS_SKIPPED)     echo SKIPPED;;
+        $EP_STATUS_PASSED)      echo PASSED;;
+        $EP_STATUS_WAIVED)      echo WAIVED;;
+        $EP_STATUS_FAILED)      echo FAILED;;
+        $EP_STATUS_ERRORED)     echo ERRORED;;
+        $EP_STATUS_PANICKED)    echo PANICKED;;
+        $EP_STATUS_ABORTED)     echo ABORTED;;
+        *) ep_abort "Invalid status code: $status";;
     esac
 }
 
-fi # _BT_STATUS_SH
+fi # _EP_STATUS_SH

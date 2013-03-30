@@ -6,16 +6,16 @@ with TERMINATED, similarly to panic.
 Add verification of the suite and test construction validity. E.g. check if
 shell initialization corresponds to the type of shell being entered, that it
 is done at exactly the right bash level, that any test command is being
-executed within appropriately-initialized shell, that appropriate bt_*end is
+executed within appropriately-initialized shell, that appropriate ep_*end is
 called, etc.
 
-Consider implementing bt_glob_valid or bt_glob_is_valid for checking pattern
+Consider implementing ep_glob_valid or ep_glob_is_valid for checking pattern
 validity. This might require pattern "compilation" and common library.
 
 Oh, BTW, newlines are allowed in XML attributes, so it's safe to specify
 BT_INCLUDE and other whitespace-separated list variable values.
 
-Consider adding support for disabling bt_abort_assert execution to improve
+Consider adding support for disabling ep_abort_assert execution to improve
 performance. Measure the difference.
 
 Add support for remote test execution. Make the shell stdout be the log pipe
@@ -29,14 +29,14 @@ ERROR_CLEANUP and ERROR_ASSERTION, or something, to simplify status
 interpretation for new users.
 
 Consider adding abbreviated interface support:
-    bt_s
-    bt_si
-    bt_sb
-    bt_se
-    bt_t
-    bt_ti
-    bt_tb
-    bt_te
+    ep_s
+    ep_si
+    ep_sb
+    ep_se
+    ep_t
+    ep_ti
+    ep_tb
+    ep_te
 
 Think of renaming "unwaiving" to "claiming".
 

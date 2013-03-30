@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# bt_glob_escape test suite
+# ep_glob_escape test suite
 #
 # Copyright (c) 2012-2013 Red Hat, Inc. All rights reserved.
 #
@@ -8,19 +8,19 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-. bt.sh
-bt_suite_init "$@"
+. ep.sh
+ep_suite_init "$@"
 
 function at()
 {
     declare -r name="$1"
     declare -r input="$2"
     declare -r expected_output="$3"
-    bt_test_begin "$name"; (
-        bt_test_init
-        declare -r output=`bt_glob_escape "\$input"`
+    ep_test_begin "$name"; (
+        ep_test_init
+        declare -r output=`ep_glob_escape "\$input"`
         [ "$output" == "$expected_output" ]
-    ); bt_test_end
+    ); ep_test_end
 }
 
 function asi()
@@ -28,47 +28,47 @@ function asi()
     declare -r name="$1"
     declare -r input="$2"
     declare -r expected_output="$3"
-    bt_test_begin "$name"; (
-        bt_test_init
-        declare -r output=`bt_glob_escape --set-item "\$input"`
+    ep_test_begin "$name"; (
+        ep_test_init
+        declare -r output=`ep_glob_escape --set-item "\$input"`
         [ "$output" == "$expected_output" ]
-    ); bt_test_end
+    ); ep_test_end
 }
 
-bt_suite_begin no_args; (
-    bt_suite_init
-    bt_test -e 1 status eval "bt_glob_escape >/dev/null 2>&1"
-    bt_test -e 1 stdout \
-                    eval "bt_glob_escape 2>/dev/null | { ! grep -q .; }"
-    bt_test -e 1 stderr \
-                    eval "bt_glob_escape 2>&1 >/dev/null | grep -q ^Usage:"
-); bt_suite_end
+ep_suite_begin no_args; (
+    ep_suite_init
+    ep_test -e 1 status eval "ep_glob_escape >/dev/null 2>&1"
+    ep_test -e 1 stdout \
+                    eval "ep_glob_escape 2>/dev/null | { ! grep -q .; }"
+    ep_test -e 1 stderr \
+                    eval "ep_glob_escape 2>&1 >/dev/null | grep -q ^Usage:"
+); ep_suite_end
 
-bt_suite_begin options; (
-    bt_suite_init
-    bt_test -e 0  none    eval "bt_glob_escape a >/dev/null"
+ep_suite_begin options; (
+    ep_suite_init
+    ep_test -e 0  none    eval "ep_glob_escape a >/dev/null"
     for o in -h --help; do
-        bt_suite_begin -- $o; (
-            bt_suite_init
+        ep_suite_begin -- $o; (
+            ep_suite_init
             # check that stdout contains "Usage:"
-            bt_test status eval "bt_glob_escape $o >/dev/null 2>&1"
-            bt_test stdout \
-                        eval "bt_glob_escape $o 2>/dev/null | grep -q ^Usage:"
-            bt_test stderr \
-                        eval "bt_glob_escape $o 2>&1 >/dev/null | { ! grep -q .; }"
-        ); bt_suite_end
+            ep_test status eval "ep_glob_escape $o >/dev/null 2>&1"
+            ep_test stdout \
+                        eval "ep_glob_escape $o 2>/dev/null | grep -q ^Usage:"
+            ep_test stderr \
+                        eval "ep_glob_escape $o 2>&1 >/dev/null | { ! grep -q .; }"
+        ); ep_suite_end
     done
     for o in -s --set-item; do
-        bt_suite_begin -- $o; (
-            bt_suite_init
-            bt_test -e 0  valid     eval "bt_glob_escape $o a >/dev/null"
-            bt_test -e 1  invalid   eval "bt_glob_escape $o @\( 2>/dev/null"
-        ); bt_suite_end
+        ep_suite_begin -- $o; (
+            ep_suite_init
+            ep_test -e 0  valid     eval "ep_glob_escape $o a >/dev/null"
+            ep_test -e 1  invalid   eval "ep_glob_escape $o @\( 2>/dev/null"
+        ); ep_suite_end
     done
-); bt_suite_end
+); ep_suite_end
 
-bt_suite_begin text; (
-    bt_suite_init
+ep_suite_begin text; (
+    ep_suite_init
     at letter                   a a
     at backslash                '\' '\\'
     at star                     '*' '\*'
@@ -81,10 +81,10 @@ bt_suite_begin text; (
     at plus_open_paren          '+(' '\+('
     at exclamation              '!' '!'
     at exclamation_open_paren   '!(' '\!('
-); bt_suite_end
+); ep_suite_end
 
-bt_suite_begin set_item; (
-    bt_suite_init
+ep_suite_begin set_item; (
+    ep_suite_init
     asi letter              a a
     asi backslash           '\\' '\\'
     asi star                '*' '*'
@@ -101,4 +101,4 @@ bt_suite_begin set_item; (
     asi exclamation_empty   '!()' '!()'
     asi at_alt_parens       '@((|))' '@((|))'
     asi at_at               '@(@())' '@(@())'
-); bt_suite_end
+); ep_suite_end

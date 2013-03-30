@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# bt_glob test suite
+# ep_glob test suite
 #
 # Copyright (c) 2012-2013 Red Hat, Inc. All rights reserved.
 #
@@ -8,8 +8,8 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-. bt.sh
-bt_suite_init "$@"
+. ep.sh
+ep_suite_init "$@"
 
 function test_glob()
 {
@@ -19,114 +19,114 @@ function test_glob()
     declare -r full_status="$4"
     declare -r ppfx_status="$5"
     declare -r tpfx_status="$6"
-    bt_suite_begin -- "$name"; (
-        bt_suite_init
-        bt_test -e "$full_status" "full" bt_glob    -- "$pattern" "$text"
-        bt_test -e "$ppfx_status" "ppfx" bt_glob -p -- "$pattern" "$text"
-        bt_test -e "$tpfx_status" "tpfx" bt_glob -t -- "$pattern" "$text"
-    ); bt_suite_end
+    ep_suite_begin -- "$name"; (
+        ep_suite_init
+        ep_test -e "$full_status" "full" ep_glob    -- "$pattern" "$text"
+        ep_test -e "$ppfx_status" "ppfx" ep_glob -p -- "$pattern" "$text"
+        ep_test -e "$tpfx_status" "tpfx" ep_glob -t -- "$pattern" "$text"
+    ); ep_suite_end
 }
 
-bt_suite_begin no_args; (
-    bt_suite_init
-    bt_test -e 2 status eval "bt_glob >/dev/null 2>&1"
-    bt_test -e 2 stdout \
-                    eval "bt_glob 2>/dev/null | { ! grep -q .; }"
-    bt_test -e 2 stderr \
-                    eval "bt_glob 2>&1 >/dev/null | grep -q ^Usage:"
-); bt_suite_end
+ep_suite_begin no_args; (
+    ep_suite_init
+    ep_test -e 2 status eval "ep_glob >/dev/null 2>&1"
+    ep_test -e 2 stdout \
+                    eval "ep_glob 2>/dev/null | { ! grep -q .; }"
+    ep_test -e 2 stderr \
+                    eval "ep_glob 2>&1 >/dev/null | grep -q ^Usage:"
+); ep_suite_end
 
-bt_suite_begin options; (
-    bt_suite_init
-    bt_suite_begin none; (
-        bt_suite_init
-        bt_test -e 0  match       bt_glob a   a
-        bt_test -e 1  mismatch    bt_glob a   b
-    ); bt_suite_end
-    bt_suite_begin termination; (
-        bt_suite_init
-        bt_test -e 1 before_args  bt_glob -- --help ------
-        bt_test -e 1 between_args bt_glob help -- --help
-        bt_test -e 2 after_args \
-                        eval "bt_glob help help -- --help 2>/dev/null"
-    ); bt_suite_end
+ep_suite_begin options; (
+    ep_suite_init
+    ep_suite_begin none; (
+        ep_suite_init
+        ep_test -e 0  match       ep_glob a   a
+        ep_test -e 1  mismatch    ep_glob a   b
+    ); ep_suite_end
+    ep_suite_begin termination; (
+        ep_suite_init
+        ep_test -e 1 before_args  ep_glob -- --help ------
+        ep_test -e 1 between_args ep_glob help -- --help
+        ep_test -e 2 after_args \
+                        eval "ep_glob help help -- --help 2>/dev/null"
+    ); ep_suite_end
     for o in -h --help; do
-        bt_suite_begin -- $o; (
-            bt_suite_init
+        ep_suite_begin -- $o; (
+            ep_suite_init
             # check that stdout contains "Usage:"
-            bt_test status eval "bt_glob $o >/dev/null 2>&1"
-            bt_test stdout \
-                        eval "bt_glob $o 2>/dev/null | grep -q ^Usage:"
-            bt_test stderr \
-                        eval "bt_glob $o 2>&1 >/dev/null | { ! grep -q .; }"
-        ); bt_suite_end
+            ep_test status eval "ep_glob $o >/dev/null 2>&1"
+            ep_test stdout \
+                        eval "ep_glob $o 2>/dev/null | grep -q ^Usage:"
+            ep_test stderr \
+                        eval "ep_glob $o 2>&1 >/dev/null | { ! grep -q .; }"
+        ); ep_suite_end
     done
     for o in -p --pattern-prefix; do
-        bt_suite_begin -- $o; (
-            bt_suite_init
-            bt_test -e 0  match     bt_glob $o ab   a
-            bt_test -e 1  mismatch  bt_glob $o a    ab
-        ); bt_suite_end
+        ep_suite_begin -- $o; (
+            ep_suite_init
+            ep_test -e 0  match     ep_glob $o ab   a
+            ep_test -e 1  mismatch  ep_glob $o a    ab
+        ); ep_suite_end
     done
     for o in -t --text-prefix; do
-        bt_suite_begin -- $o; (
-            bt_suite_init
-            bt_test -e 1  match     bt_glob $o ab   a
-            bt_test -e 0  mismatch  bt_glob $o a    ab
-        ); bt_suite_end
+        ep_suite_begin -- $o; (
+            ep_suite_init
+            ep_test -e 1  match     ep_glob $o ab   a
+            ep_test -e 0  mismatch  ep_glob $o a    ab
+        ); ep_suite_end
     done
-); bt_suite_end
+); ep_suite_end
 
-bt_suite_begin literal; (
-    bt_suite_init
+ep_suite_begin literal; (
+    ep_suite_init
     test_glob empty   "" "" 0 0 0
 
-    bt_suite_begin one_char; (
-        bt_suite_init
+    ep_suite_begin one_char; (
+        ep_suite_init
         test_glob equal       "a" "a" 0 0 0
         test_glob nonequal    "a" "b" 1 1 1
-    ); bt_suite_end
+    ); ep_suite_end
 
-    bt_suite_begin one_char_and_empty; (
-        bt_suite_init
+    ep_suite_begin one_char_and_empty; (
+        ep_suite_init
         test_glob empty_text      "a" ""  1 0 1
         test_glob empty_pattern   ""  "a" 1 1 0
-    ); bt_suite_end
+    ); ep_suite_end
 
-    bt_suite_begin two_chars; (
-        bt_suite_init
+    ep_suite_begin two_chars; (
+        ep_suite_init
         test_glob match           "ab" "ab" 0 0 0
         test_glob mismatch_first  "cb" "ab" 1 1 1
         test_glob mismatch_last   "ac" "ab" 1 1 1
-    ); bt_suite_end
+    ); ep_suite_end
 
-    bt_suite_begin two_and_one_chars; (
-        bt_suite_init
-        bt_suite_begin short_pattern; (
-            bt_suite_init
+    ep_suite_begin two_and_one_chars; (
+        ep_suite_init
+        ep_suite_begin short_pattern; (
+            ep_suite_init
             test_glob first   "a" "ab" 1 1 0
             test_glob last    "b" "ab" 1 1 1
-        ); bt_suite_end
-        bt_suite_begin short_text; (
-            bt_suite_init
+        ); ep_suite_end
+        ep_suite_begin short_text; (
+            ep_suite_init
             test_glob first   "ab" "a" 1 0 1
             test_glob last    "ab" "b" 1 1 1
-        ); bt_suite_end
-    ); bt_suite_end
-); bt_suite_end
+        ); ep_suite_end
+    ); ep_suite_end
+); ep_suite_end
 
-bt_suite_begin star; (
-    bt_suite_init
+ep_suite_begin star; (
+    ep_suite_init
     test_glob one_to_empty        "*"     ""  0 0 0
     test_glob one_to_non_empty    "*"     " " 0 0 0
     test_glob two_to_empty        "**"    ""  0 0 0
     test_glob two_to_non_empty    "**"    " " 0 0 0
-); bt_suite_end
+); ep_suite_end
 
-bt_suite_begin extglob; (
-    bt_suite_init
-    bt_suite_begin pattern_set; (
-        bt_suite_init
+ep_suite_begin extglob; (
+    ep_suite_init
+    ep_suite_begin pattern_set; (
+        ep_suite_init
         test_glob empty                   "@()"       ""  0 0 0
         test_glob empty_head              "@()a"      "a" 0 0 0
         test_glob empty_tail              "a@()"      "a" 0 0 0
@@ -135,38 +135,38 @@ bt_suite_begin extglob; (
         test_glob nested_empty            "@(@())"    ""  0 0 0
         test_glob alternate_empty         "@(|)"      ""  0 0 0
         test_glob nested_alternate_empty  "@(@(|))"   ""  0 0 0
-        bt_suite_begin alternate_nested_empty; (
-            bt_suite_init
+        ep_suite_begin alternate_nested_empty; (
+            ep_suite_init
             test_glob first   "@(@()|)"      ""  0 0 0
             test_glob last    "@(|@())"      ""  0 0 0
             test_glob both    "@(@()|@())"   ""  0 0 0
-        ); bt_suite_end
-        bt_suite_begin escaped; (
-            bt_suite_init
+        ); ep_suite_end
+        ep_suite_begin escaped; (
+            ep_suite_init
             test_glob pipe "@(\\|)" "|" 0 0 0
             test_glob paren_opening "@(\\()" "(" 0 0 0
             test_glob paren_closing "@(\\))" ")" 0 0 0
             test_glob operator "@(\\@())" "@()" 0 0 0
-            bt_suite_begin nested; (
-                bt_suite_init
+            ep_suite_begin nested; (
+                ep_suite_init
                 test_glob pipe "@(@(\\|))" "|" 0 0 0
                 test_glob paren_opening "@(@(\\())" "(" 0 0 0
                 test_glob paren_closing "@(@(\\)))" ")" 0 0 0
                 test_glob operator "@(@(\\@()))" "@()" 0 0 0
-            ); bt_suite_end
+            ); ep_suite_end
             test_glob nested_pipe "@(@(\\|)|)" "|" 0 0 0
-        ); bt_suite_end
-    ); bt_suite_end
-    bt_suite_begin at; (
-        bt_suite_init
-        bt_suite_begin "one_pattern"; (
-            bt_suite_init
+        ); ep_suite_end
+    ); ep_suite_end
+    ep_suite_begin at; (
+        ep_suite_init
+        ep_suite_begin "one_pattern"; (
+            ep_suite_init
             test_glob empty_to_empty     "@()"   ""  0 0 0
             test_glob empty_to_nonempty  "@()"   "a" 1 1 0
             test_glob nonempty_to_empty  "@(a)"  ""  1 0 1
-        ); bt_suite_end
-        bt_suite_begin "two_patterns"; (
-            bt_suite_init
+        ); ep_suite_end
+        ep_suite_begin "two_patterns"; (
+            ep_suite_init
             test_glob empty_to_empty              "@(|)"  ""  0 0 0
             test_glob nonempty_first_to_empty     "@(a|)" ""  0 0 0
             test_glob nonempty_first_to_nonempty  "@(a|)" "a" 0 0 0
@@ -176,10 +176,10 @@ bt_suite_begin extglob; (
             test_glob nonempty_to_first           "@(a|b)"    "a" 0 0 0
             test_glob nonempty_to_last            "@(a|b)"    "b" 0 0 0
             test_glob nonempty_to_none            "@(a|b)"    "c" 1 1 1
-        ); bt_suite_end
-    ); bt_suite_end
-    bt_suite_begin star; (
-        bt_suite_init
+        ); ep_suite_end
+    ); ep_suite_end
+    ep_suite_begin star; (
+        ep_suite_init
         test_glob empty_to_empty      "*()"  ""       0 0 0
         test_glob empty_to_one        "*()"  "a"      1 1 0
         test_glob one_to_empty        "*(a)" ""       0 0 0
@@ -188,9 +188,9 @@ bt_suite_begin extglob; (
         test_glob two_to_empty        "*(ab)" ""      0 0 0
         test_glob two_to_many         "*(ab)" "abab"  0 0 0
         test_glob two_to_many_part    "*(ab)" "aba"   1 0 0
-    ); bt_suite_end
-    bt_suite_begin question; (
-        bt_suite_init
+    ); ep_suite_end
+    ep_suite_begin question; (
+        ep_suite_init
         test_glob empty_to_empty      "?()"  ""       0 0 0
         test_glob empty_to_one        "?()"  "a"      1 1 0
         test_glob one_to_empty        "?(a)" ""       0 0 0
@@ -199,9 +199,9 @@ bt_suite_begin extglob; (
         test_glob two_to_two          "?(ab)" "ab"    0 0 0
         test_glob two_to_many         "?(ab)" "abab"  1 1 0
         test_glob two_to_one          "?(ab)" "a"     1 0 0
-    ); bt_suite_end
-    bt_suite_begin plus; (
-        bt_suite_init
+    ); ep_suite_end
+    ep_suite_begin plus; (
+        ep_suite_init
         test_glob empty_to_empty      "+()"  ""       0 0 0
         test_glob empty_to_one        "+()"  "a"      1 1 0
         test_glob one_to_empty        "+(a)" ""       1 0 1
@@ -210,9 +210,9 @@ bt_suite_begin extglob; (
         test_glob two_to_empty        "+(ab)" ""      1 0 1
         test_glob two_to_many         "+(ab)" "abab"  0 0 0
         test_glob two_to_many_part    "+(ab)" "aba"   1 0 0
-    ); bt_suite_end
-    bt_suite_begin exclamation; (
-        bt_suite_init
+    ); ep_suite_end
+    ep_suite_begin exclamation; (
+        ep_suite_init
         test_glob empty_to_empty      "!()"  ""       1 0 1
         test_glob empty_to_one        "!()"  "a"      0 0 0
         test_glob one_to_empty        "!(a)" ""       0 0 0
@@ -221,26 +221,26 @@ bt_suite_begin extglob; (
         test_glob two_to_empty        "!(ab)" ""      0 0 0
         test_glob two_to_many         "!(ab)" "abab"  0 0 0
         test_glob two_to_many_part    "!(ab)" "aba"   0 0 0
-    ); bt_suite_end
-); bt_suite_end
+    ); ep_suite_end
+); ep_suite_end
 
-bt_suite_begin path; (
-    bt_suite_init
+ep_suite_begin path; (
+    ep_suite_init
 
     # Text being parent of pattern
-    bt_test -e 1  parent_as_child     bt_glob -t  "/aaa/bbb/" "/aaa"
-    bt_test -e 1  parent_as_exact     bt_glob     "/aaa/bbb"  "/aaa"
-    bt_test -e 0  parent_as_parent    bt_glob -p  "/aaa/bbb"  "/aaa/"
+    ep_test -e 1  parent_as_child     ep_glob -t  "/aaa/bbb/" "/aaa"
+    ep_test -e 1  parent_as_exact     ep_glob     "/aaa/bbb"  "/aaa"
+    ep_test -e 0  parent_as_parent    ep_glob -p  "/aaa/bbb"  "/aaa/"
 
     # Text being pattern
-    bt_test -e 1  exact_as_child      bt_glob -t  "/aaa/bbb/" "/aaa/bbb"
-    bt_test -e 0  exact_as_exact      bt_glob     "/aaa/bbb"  "/aaa/bbb"
-    bt_test -e 1  exact_as_parent     bt_glob -p  "/aaa/bbb"  "/aaa/bbb/"
+    ep_test -e 1  exact_as_child      ep_glob -t  "/aaa/bbb/" "/aaa/bbb"
+    ep_test -e 0  exact_as_exact      ep_glob     "/aaa/bbb"  "/aaa/bbb"
+    ep_test -e 1  exact_as_parent     ep_glob -p  "/aaa/bbb"  "/aaa/bbb/"
 
     # Text being child of pattern
-    bt_test -e 0  child_as_child      bt_glob -t  "/aaa/bbb/" "/aaa/bbb/ccc"
-    bt_test -e 1  child_as_exact      bt_glob     "/aaa/bbb" "/aaa/bbb/ccc"
-    bt_test -e 1  child_as_parent     bt_glob -p  "/aaa/bbb" "/aaa/bbb/ccc/"
-); bt_suite_end
+    ep_test -e 0  child_as_child      ep_glob -t  "/aaa/bbb/" "/aaa/bbb/ccc"
+    ep_test -e 1  child_as_exact      ep_glob     "/aaa/bbb" "/aaa/bbb/ccc"
+    ep_test -e 1  child_as_parent     ep_glob -p  "/aaa/bbb" "/aaa/bbb/ccc/"
+); ep_suite_end
 
-bt_suite escape glob_escape
+ep_suite escape glob_escape

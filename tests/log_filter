@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# bt_log_filter test suite
+# ep_log_filter test suite
 #
 # Copyright (c) 2013 Red Hat, Inc. All rights reserved.
 #
@@ -8,8 +8,8 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-. bt.sh
-bt_suite_init "$@"
+. ep.sh
+ep_suite_init "$@"
 
 function t()
 {
@@ -21,12 +21,12 @@ function t()
     declare -r expected_output=`echo -n "$input_and_expected_output" |
                                     sed -ne 'x; /^-$/{x;p;x}; x; /^-$/x'`
 
-    bt_test_begin -- "$name"; (
-        bt_test_init
+    ep_test_begin -- "$name"; (
+        ep_test_init
         declare output
         declare status=0
         declare result=0
-        output=`echo -n "$input" | bt_log_filter "$@"`
+        output=`echo -n "$input" | ep_log_filter "$@"`
         if [ "$output" != "$expected_output" ]; then
             echo "====== INPUT ======"
             echo "$input"
@@ -43,7 +43,7 @@ function t()
             result=1
         fi
         exit $result
-    ); bt_test_end
+    ); ep_test_end
 }
 
 t empty <<<"\
@@ -59,8 +59,8 @@ t two_lines <<<"\
     OUTPUT
     OUTPUT"
 
-bt_suite_begin level; (
-    bt_suite_init
+ep_suite_begin level; (
+    ep_suite_init
     t below -l TRACE <<<"\
         OUTPUT
         -
@@ -72,12 +72,12 @@ bt_suite_begin level; (
     t above -l STRUCT <<<"\
         OUTPUT
         -"
-); bt_suite_end
+); ep_suite_end
 
-bt_suite_begin top; (
-    bt_suite_init
-    bt_suite_begin positive; (
-        bt_suite_init
+ep_suite_begin top; (
+    ep_suite_init
+    ep_suite_begin positive; (
+        ep_suite_init
         t below_immediate -t 0 <<<"\
             STRUCT BEGIN ''
             OUTPUT
@@ -124,9 +124,9 @@ bt_suite_begin top; (
             STRUCT END '/1/2' PASSED
             STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED"
-    ); bt_suite_end
-    bt_suite_begin negative; (
-        bt_suite_init
+    ); ep_suite_end
+    ep_suite_begin negative; (
+        ep_suite_init
         t below_immediate -t -1 <<<"\
             STRUCT BEGIN ''
             OUTPUT
@@ -171,13 +171,13 @@ bt_suite_begin top; (
             STRUCT ENTER '/1/2'
             STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED"
-    ); bt_suite_end
-); bt_suite_end
+    ); ep_suite_end
+); ep_suite_end
 
-bt_suite_begin bottom; (
-    bt_suite_init
-    bt_suite_begin positive; (
-        bt_suite_init
+ep_suite_begin bottom; (
+    ep_suite_init
+    ep_suite_begin positive; (
+        ep_suite_init
         t above_immediate -b 0 <<<"\
             STRUCT ENTER ''
             OUTPUT
@@ -222,9 +222,9 @@ bt_suite_begin bottom; (
             STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
             STRUCT EXIT '' PASSED"
-    ); bt_suite_end
-    bt_suite_begin negative; (
-        bt_suite_init
+    ); ep_suite_end
+    ep_suite_begin negative; (
+        ep_suite_init
         t above_immediate -b -1 <<<"\
             STRUCT ENTER ''
             OUTPUT
@@ -271,13 +271,13 @@ bt_suite_begin bottom; (
             -
             STRUCT ENTER ''
             STRUCT EXIT '' PASSED"
-    ); bt_suite_end
-); bt_suite_end
+    ); ep_suite_end
+); ep_suite_end
 
-bt_suite_begin top_bottom; (
-    bt_suite_init
-    bt_suite_begin positive; (
-        bt_suite_init
+ep_suite_begin top_bottom; (
+    ep_suite_init
+    ep_suite_begin positive; (
+        ep_suite_init
         t -1 -t 2 -b 1 <<<"\
             STRUCT ENTER ''
             STRUCT BEGIN '/1'
@@ -334,9 +334,9 @@ bt_suite_begin top_bottom; (
             STRUCT END '/1/2' PASSED
             STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED"
-    ); bt_suite_end
-    bt_suite_begin negative; (
-        bt_suite_init
+    ); ep_suite_end
+    ep_suite_begin negative; (
+        ep_suite_init
         t -1 -t -2 -b -3 <<<"\
             STRUCT ENTER ''
             STRUCT BEGIN '/1'
@@ -393,11 +393,11 @@ bt_suite_begin top_bottom; (
             STRUCT END '/1/2' PASSED
             STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED"
-    ); bt_suite_end
-); bt_suite_end
+    ); ep_suite_end
+); ep_suite_end
 
-bt_suite_begin status; (
-    bt_suite_init
+ep_suite_begin status; (
+    ep_suite_init
     t waived_failed_out -sFAILED <<<"\
         STRUCT ENTER ''
         STRUCT BEGIN '/1'
@@ -450,4 +450,4 @@ bt_suite_begin status; (
         STRUCT EXIT '/2' PASSED
         STRUCT END '/2' PASSED
         STRUCT EXIT '' PASSED"
-); bt_suite_end
+); ep_suite_end

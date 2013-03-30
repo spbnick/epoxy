@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Bash test test suite
+# Epoxy test suite
 #
 # Copyright (c) 2013 Red Hat, Inc. All rights reserved.
 #
@@ -8,14 +8,14 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-. bt.sh
-bt_suite_init "$@"
+. ep.sh
+ep_suite_init "$@"
 
-bt_suite glob glob
-bt_suite_begin log; (
-    bt_suite_init
-    bt_suite mix log_mix
-    bt_suite filter log_filter
-    bt_suite cook log_cook
-); bt_suite_end
-bt_suite status status
+ep_suite glob glob
+ep_suite_begin log; (
+    ep_suite_init
+    ep_suite mix log_mix
+    ep_suite filter log_filter
+    ep_suite cook log_cook
+); ep_suite_end
+ep_suite status status

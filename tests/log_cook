@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# bt_log_cook test suite
+# ep_log_cook test suite
 #
 # Copyright (c) 2013 Red Hat, Inc. All rights reserved.
 #
@@ -8,8 +8,8 @@
 # to use, modify, copy, or redistribute it subject to the terms
 # and conditions of the GNU General Public License version 2.
 
-. bt.sh
-bt_suite_init "$@"
+. ep.sh
+ep_suite_init "$@"
 
 declare -a STATUS_LIST=(
                 SKIPPED
@@ -36,12 +36,12 @@ function t()
     declare -r expected_output=`echo -n "\$input_and_expected_output" |
                                 sed -ne 'x; /^-$/{x;p;x}; x; /^-$/x'`
 
-    bt_test_begin "$name"; (
-        bt_test_init
+    ep_test_begin "$name"; (
+        ep_test_init
         declare result=0
         declare status=0
         declare output
-        output=`echo -n "$input" | bt_log_cook` || status=$?
+        output=`echo -n "$input" | ep_log_cook` || status=$?
         if [ "$output" != "$expected_output" ]; then
             echo "====== INPUT ======"
             echo "$input"
@@ -58,7 +58,7 @@ function t()
             result=1
         fi
         exit $result
-    ); bt_test_end
+    ); ep_test_end
 }
 
 t empty <<<"\
@@ -184,8 +184,8 @@ t parent_override <<<"\
     /1 WAIVED
     WAIVED"
 
-bt_suite_begin status; (
-    bt_suite_init
+ep_suite_begin status; (
+    ep_suite_init
     for s in "${STATUS_LIST[@]}"; do
         t "$s" <<<"\
             STRUCT BEGIN ''
@@ -195,4 +195,4 @@ bt_suite_begin status; (
             -
             $s"
     done
-); bt_suite_end
+); ep_suite_end
