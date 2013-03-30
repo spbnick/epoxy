@@ -243,4 +243,4 @@ ep_suite_begin path; (
     ep_test -e 1  child_as_parent     ep_glob -p  "/aaa/bbb" "/aaa/bbb/ccc/"
 ); ep_suite_end
 
-ep_suite escape glob_escape
+ep_suite escape test_glob_escape
