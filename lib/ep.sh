@@ -163,11 +163,16 @@ Any arguments specified after \"--\" are passed to the suite.
 "
 }
 
-# Parse command line arguments, extracting framework-specific arguments and
-# storing suite arguments in EP_SUITE_ARGS array.
-# Args: [arg...]
-function _ep_parse_args()
+# Initialize a suite shell, parse command line arguments, extracting
+# framework-specific arguments and storing suite arguments in EP_SUITE_ARGS
+# array.
+# Args: [cmdline_arg...]
+function ep_suite_init()
 {
+    # Initialize a generic shell
+    _ep_shell_init
+
+    # Set default logging parameters
     _EP_LOG_FILE=
     _EP_LOG_FILTER=true
     _EP_LOG_FILTER_OPTS="--status=PASSED"
@@ -187,76 +192,61 @@ function _ep_parse_args()
     # Store suite arguments
     EP_SUITE_ARGS=("$@")
 
-    # If there are no framework arguments
-    if [ "${#args[@]}" == 0 ]; then
-        return
-    fi
+    # If framework arguments are present
+    if [ "${#args[@]}" != 0 ]; then
+        # Parse framework arguments
+        declare args_expr
+        args_expr=`getopt --name \`basename "\$0"\` \
+                          --options hl:i:e:c:f:ur \
+                          --longoptions help,log-file: \
+                          --longoptions include:,exclude:,dont-include: \
+                          --longoptions claim:dont-claim:enable:dont-enable: \
+                          --longoptions filter-opts:unfiltered,raw \
+                          -- "${args[@]}"`
+        eval set -- "$args_expr"
 
-    # Parse framework arguments
-    declare args_expr
-    args_expr=`getopt --name \`basename "\$0"\` \
-                      --options hl:i:e:c:f:ur \
-                      --longoptions help,log-file: \
-                      --longoptions include:,exclude:,dont-include: \
-                      --longoptions claim:dont-claim:enable:dont-enable: \
-                      --longoptions filter-opts:unfiltered,raw \
-                      -- "${args[@]}"`
-    eval set -- "$args_expr"
+        # Read framework option arguments
+        while true; do
+            case "$1" in
+                -h|--help)
+                    _ep_usage; exit 0;;
+                -l|--log-file)
+                    _EP_LOG_FILE="$2";                    shift 2;;
+                -i|--include)
+                    ep_glob_var_or EP_INCLUDE       "$2"; shift 2;;
+                -e|--exclude|--dont-include)
+                    ep_glob_var_or EP_DONT_INCLUDE  "$2"; shift 2;;
+                -c|--claim)
+                    ep_glob_var_or EP_CLAIM         "$2"; shift 2;;
+                --dont-claim)
+                    ep_glob_var_or EP_DONT_CLAIM    "$2"; shift 2;;
+                --enable)
+                    ep_glob_var_or EP_ENABLE        "$2"; shift 2;;
+                --dont-enable)
+                    ep_glob_var_or EP_DONT_ENABLE   "$2"; shift 2;;
+                -f|--filter-opts)
+                    _EP_LOG_FILTER_OPTS="$_EP_LOG_FILTER_OPTS $2"
+                    shift 2
+                    ;;
+                -u|--unfiltered)
+                    _EP_LOG_FILTER=false;                 shift;;
+                -r|--raw)
+                    _EP_LOG_COOK=false;                   shift;;
+                --) shift; break;;
+                *) ep_abort "Unknown option: $1";;
+            esac
+        done
 
-    # Read framework option arguments
-    while true; do
-        case "$1" in
-            -h|--help)
-                _ep_usage; exit 0;;
-            -l|--log-file)
-                _EP_LOG_FILE="$2";                    shift 2;;
-            -i|--include)
-                ep_glob_var_or EP_INCLUDE       "$2"; shift 2;;
-            -e|--exclude|--dont-include)
-                ep_glob_var_or EP_DONT_INCLUDE  "$2"; shift 2;;
-            -c|--claim)
-                ep_glob_var_or EP_CLAIM         "$2"; shift 2;;
-            --dont-claim)
-                ep_glob_var_or EP_DONT_CLAIM    "$2"; shift 2;;
-            --enable)
-                ep_glob_var_or EP_ENABLE        "$2"; shift 2;;
-            --dont-enable)
-                ep_glob_var_or EP_DONT_ENABLE   "$2"; shift 2;;
-            -f|--filter-opts)
-                _EP_LOG_FILTER_OPTS="$_EP_LOG_FILTER_OPTS $2"
-                shift 2
-                ;;
-            -u|--unfiltered)
-                _EP_LOG_FILTER=false;                 shift;;
-            -r|--raw)
-                _EP_LOG_COOK=false;                   shift;;
-            --) shift; break;;
-            *) ep_abort "Unknown option: $1";;
-        esac
-    done
-
-    # Read framework positional arguments
-    while [ $# != 0 ]; do
-        if [ "$1" == "--" ]; then
+        # Read framework positional arguments
+        while [ $# != 0 ]; do
+            if [ "$1" == "--" ]; then
+                shift
+                break
+            fi
+            ep_glob_var_or EP_INCLUDE "$1"
             shift
-            break
-        fi
-        ep_glob_var_or EP_INCLUDE "$1"
-        shift
-    done
-}
-
-# Initialize a suite shell, parse command line arguments, extracting
-# framework-specific arguments and storing suite arguments in EP_SUITE_ARGS
-# array.
-# Args: [cmdline_arg...]
-function ep_suite_init()
-{
-    # Initialize a generic shell
-    _ep_shell_init
-
-    # Parse command line arguments
-    _ep_parse_args "$@"
+        done
+    fi
 
     # Verify EP_PROTOCOL value
     if [ -n "${EP_PROTOCOL:-}" ] &&
@@ -267,6 +257,7 @@ function ep_suite_init()
         exit 127
     fi
 
+    # Initialize global variables
     _EP_PROTOCOL="${EP_PROTOCOL:-generic}"
     _EP_NAME_STACK="${_EP_NAME_STACK:-}"
     _EP_COUNT_SKIPPED=0
