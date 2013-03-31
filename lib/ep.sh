@@ -115,7 +115,7 @@ function _ep_shell_init()
         read -r EP_ABORT_PID discard < /proc/self/stat
     fi
 
-    ep_abort_assert ep_bool_is_valid "${_EP_SKIPPED-false}"
+    ep_abort_if_not ep_bool_is_valid "${_EP_SKIPPED-false}"
 
     # If entering a skipped assertion shell
     if ${_EP_SKIPPED:-false}; then
@@ -288,7 +288,7 @@ function ep_suite_init()
     fi
 
     # Setup logging, if not done yet
-    ep_abort_assert ep_bool_is_valid "${_EP_LOG_SETUP-false}"
+    ep_abort_if_not ep_bool_is_valid "${_EP_LOG_SETUP-false}"
     if ! ${_EP_LOG_SETUP-false}; then
         _ep_log_init "$log_file" "$log_filter" "$log_filter_opts" "$log_cook"
         _EP_LOG_SETUP=true
@@ -322,7 +322,7 @@ function ep_test_init()
 function _ep_fini()
 {
     declare status="$1"
-    ep_abort_assert ep_status_is_valid "$status"
+    ep_abort_if_not ep_status_is_valid "$status"
 
     trap - EXIT
 
@@ -483,7 +483,7 @@ function ep_test_begin()
     fi
     declare -r name="$1"
     shift
-    ep_abort_assert ep_name_is_valid "$name"
+    ep_abort_if_not ep_name_is_valid "$name"
 
     # "Enter" the assertion
     ep_strstack_push _EP_NAME_STACK / "$name"
@@ -531,7 +531,7 @@ function ep_test_end()
     # Restore errexit state
     ep_attrs_pop
 
-    ep_abort_assert [ ${_EP_EXPECTED_STATUS+set} ]
+    ep_abort_if_not [ ${_EP_EXPECTED_STATUS+set} ]
     if [ $status == "$_EP_EXPECTED_STATUS" ]; then
         status=$EP_STATUS_PASSED
     else
@@ -539,20 +539,20 @@ function ep_test_end()
     fi
     unset _EP_EXPECTED_STATUS
 
-    ep_abort_assert [ ${_EP_WAIVED+set} ]
+    ep_abort_if_not [ ${_EP_WAIVED+set} ]
     if $_EP_WAIVED &&
         (($status >= $EP_STATUS_PASSED && $status <= $EP_STATUS_FAILED)); then
         status=$EP_STATUS_WAIVED
     fi
     _EP_WAIVED=false
 
-    ep_abort_assert [ ${_EP_SKIPPED+set} ]
+    ep_abort_if_not [ ${_EP_SKIPPED+set} ]
     if $_EP_SKIPPED; then
         status=$EP_STATUS_SKIPPED
     fi
     _EP_SKIPPED=false
 
-    ep_abort_assert ep_status_is_valid $status
+    ep_abort_if_not ep_status_is_valid $status
     msg="STRUCT END   '$_EP_NAME_STACK' `ep_status_to_str $status`"
     if [ $status == $EP_STATUS_WAIVED ] ||
        [ $status == $EP_STATUS_FAILED ]; then
@@ -645,7 +645,7 @@ function ep_test()
     fi
     declare -r name="$1"
     shift
-    ep_abort_assert ep_name_is_valid "$name"
+    ep_abort_if_not ep_name_is_valid "$name"
 
     if $disabled; then
         begin_args[${#begin_args[@]}]="--disabled"
@@ -744,7 +744,7 @@ function ep_suite_begin()
     fi
     declare -r name="$1"
     shift
-    ep_abort_assert ep_name_is_valid "$name"
+    ep_abort_if_not ep_name_is_valid "$name"
 
     # "Enter" the assertion
     ep_strstack_push _EP_NAME_STACK / "$name"
@@ -789,20 +789,20 @@ function ep_suite_end()
     # Restore errexit state
     ep_attrs_pop
 
-    ep_abort_assert [ ${_EP_WAIVED+set} ]
+    ep_abort_if_not [ ${_EP_WAIVED+set} ]
     if $_EP_WAIVED &&
         (($status >= $EP_STATUS_PASSED && $status <= $EP_STATUS_FAILED)); then
         status=$EP_STATUS_WAIVED
     fi
     _EP_WAIVED=false
 
-    ep_abort_assert [ ${_EP_SKIPPED+set} ]
+    ep_abort_if_not [ ${_EP_SKIPPED+set} ]
     if $_EP_SKIPPED; then
         status=$EP_STATUS_SKIPPED
     fi
     _EP_SKIPPED=false
 
-    ep_abort_assert ep_status_is_valid $status
+    ep_abort_if_not ep_status_is_valid $status
     msg="STRUCT END   '$_EP_NAME_STACK' `ep_status_to_str $status`"
     if [ $status == $EP_STATUS_WAIVED ] ||
        [ $status == $EP_STATUS_FAILED ]; then
@@ -885,7 +885,7 @@ function ep_suite()
     fi
     declare -r name="$1"
     shift
-    ep_abort_assert ep_name_is_valid "$name"
+    ep_abort_if_not ep_name_is_valid "$name"
 
     if $disabled; then
         begin_args[${#begin_args[@]}]="--disabled"

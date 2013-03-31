@@ -58,7 +58,7 @@ function ep_abort()
 
 # Abort execution if an assertion is invalid (a command fails).
 # Args: [command [arg...]]
-function ep_abort_assert()
+function ep_abort_if_not()
 {
     declare _status=
     ep_attrs_push +o errexit
@@ -280,7 +280,7 @@ function ep_read_args()
 # Args: value
 function ep_bool_is_valid()
 {
-    ep_abort_assert [ ${1+set} ]
+    ep_abort_if_not [ ${1+set} ]
     [ "$1" == "true" ] || [ "$1" == "false" ]
 }
 
@@ -288,7 +288,7 @@ function ep_bool_is_valid()
 unset GETOPT_COMPATIBLE
 # Check if getopt is enhanced and supports quoting
 if getopt --test >/dev/null; [ $? != 4 ]; then
-    ep_abort_assert Enhanced getopt not found
+    ep_abort_if_not Enhanced getopt not found
 fi
 
 fi # _EP_UTIL_SH
