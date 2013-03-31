@@ -675,7 +675,7 @@ function ep_test()
     begin_args[${#begin_args[@]}]="$name"
 
     ep_test_begin "${begin_args[@]}"
-    if ! $disabled; then
+    if ! $_EP_SKIPPED; then
         "$@"
     fi
     ep_test_end
