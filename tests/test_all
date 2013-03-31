@@ -12,7 +12,7 @@
 ep_suite_init "$@"
 
 ep_suite glob test_glob
-ep_suite_begin test_log; (
+ep_suite_begin log; (
     ep_suite_init
     ep_suite mix test_log_mix
     ep_suite filter test_log_filter
