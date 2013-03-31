@@ -151,19 +151,12 @@ Assertion handling options:
     --dont-enable=PATTERN   Don't enable assertions matching PATTERN.
 
 Output options:
-    --filter-level=LEVEL    Output log messages with LEVEL maximum level only.
-    --filter-top=NUMBER     Output assertions with NUMBER depth minimum.
-                            Negative values count from the bottom.
-    --filter-bottom=NUMBER  Output assertions with NUMBER depth maximum.
-                            Negative values count from the bottom.
-    --filter-status=STATUS  Output assertions with STATUS or worse status
-                            only.
+    -f, --filter-opts=OPTS  Add OPTS to output filter (ep_log_filter) options.
     -u, --unfiltered        Don't filter output.
     -r, --raw               Don't cook (don't summarize) output.
 
 Default options:
-    --filter-level=TRACE --filter-top=0
-    --filter-bottom=-1 --filter-status=PASSED
+    --filter-opts=\"--status=PASSED\"
 
 All patterns are Bash extended glob-like paterns.
 Any arguments specified after \"--\" are passed to the suite.
@@ -177,10 +170,7 @@ function _ep_parse_args()
 {
     _EP_LOG_FILE=
     _EP_LOG_FILTER=true
-    _EP_LOG_FILTER_LEVEL="TRACE"
-    _EP_LOG_FILTER_TOP="0"
-    _EP_LOG_FILTER_BOTTOM="-1"
-    _EP_LOG_FILTER_STATUS="PASSED"
+    _EP_LOG_FILTER_OPTS="--status=PASSED"
     _EP_LOG_COOK=true
 
     # Collect framework arguments
@@ -205,13 +195,11 @@ function _ep_parse_args()
     # Parse framework arguments
     declare args_expr
     args_expr=`getopt --name \`basename "\$0"\` \
-                      --options hl:i:e:c:ur \
+                      --options hl:i:e:c:f:ur \
                       --longoptions help,log-file: \
                       --longoptions include:,exclude:,dont-include: \
                       --longoptions claim:dont-claim:enable:dont-enable: \
-                      --longoptions filter-level:,filter-top: \
-                      --longoptions filter-bottom:,filter-status: \
-                      --longoptions unfiltered,raw \
+                      --longoptions filter-opts:unfiltered,raw \
                       -- "${args[@]}"`
     eval set -- "$args_expr"
 
@@ -234,18 +222,10 @@ function _ep_parse_args()
                 ep_glob_var_or EP_ENABLE        "$2"; shift 2;;
             --dont-enable)
                 ep_glob_var_or EP_DONT_ENABLE   "$2"; shift 2;;
-            --filter-level)
-                # TODO Validate value
-                _EP_LOG_FILTER_LEVEL="$2";            shift 2;;
-            --filter-top)
-                # TODO Validate value
-                _EP_LOG_FILTER_TOP="$2";              shift 2;;
-            --filter-bottom)
-                # TODO Validate value
-                _EP_LOG_FILTER_BOTTOM="$2";           shift 2;;
-            --filter-status)
-                # TODO Validate value
-                _EP_LOG_FILTER_STATUS="$2";           shift 2;;
+            -f|--filter-opts)
+                _EP_LOG_FILTER_OPTS="$_EP_LOG_FILTER_OPTS $2"
+                shift 2
+                ;;
             -u|--unfiltered)
                 _EP_LOG_FILTER=false;                 shift;;
             -r|--raw)

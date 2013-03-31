@@ -26,14 +26,8 @@ declare -r EP_LOG_SYNC_FD=9
 declare _EP_LOG_FILE
 # Output filtering enabled
 declare _EP_LOG_FILTER
-# Output filter maximum level
-declare _EP_LOG_FILTER_LEVEL
-# Output filter minimum depth
-declare _EP_LOG_FILTER_TOP
-# Output filter maximum depth
-declare _EP_LOG_FILTER_BOTTOM
-# Output filter status
-declare _EP_LOG_FILTER_STATUS
+# Output filter options
+declare _EP_LOG_FILTER_OPTS
 # Output cooking enabled
 declare _EP_LOG_COOK
 # Log pipe PID
@@ -52,11 +46,7 @@ function _ep_log_init()
     fi
 
     if $_EP_LOG_FILTER; then
-        pipe_cmd="$pipe_cmd | ep_log_filter \
-                                --level=$_EP_LOG_FILTER_LEVEL \
-                                --top=$_EP_LOG_FILTER_TOP \
-                                --bottom=$_EP_LOG_FILTER_BOTTOM \
-                                --status=$_EP_LOG_FILTER_STATUS"
+        pipe_cmd="$pipe_cmd | ep_log_filter $_EP_LOG_FILTER_OPTS"
     fi
 
     if $_EP_LOG_COOK; then
