@@ -264,8 +264,9 @@ function ep_suite_init()
     _EP_COUNT_ERRORED=0
     _EP_COUNT_PANICKED=0
     _EP_COUNT_ABORTED=0
-    _EP_TEARDOWN_ARGC=()
-    _EP_TEARDOWN_ARGV=()
+
+    # Clear teardown command stack
+    ep_teardown_pop_all
 
     # Set EXIT trap as soon as possible to capture any internal errors
     trap _ep_trap_exit EXIT

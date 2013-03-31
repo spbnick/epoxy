@@ -13,9 +13,9 @@ declare -r _EP_TEARDOWN_SH=
 . ep_util.sh
 
 # Teardown command argc array
-declare -a _EP_TEARDOWN_ARGC
+declare -a _EP_TEARDOWN_ARGC=()
 # Teardown command argv array
-declare -a _EP_TEARDOWN_ARGV
+declare -a _EP_TEARDOWN_ARGV=()
 
 # Push a command to the teardown command stack.
 # Args: ...
@@ -36,6 +36,13 @@ function ep_teardown_pop()
                         `ep_arrstack_peek _EP_TEARDOWN_ARGC`
         ep_arrstack_pop _EP_TEARDOWN_ARGC
     done
+}
+
+# Pop all commands from the teardown command stack.
+function ep_teardown_pop_all()
+{
+    _EP_TEARDOWN_ARGC=()
+    _EP_TEARDOWN_ARGV=()
 }
 
 # Execute and pop commands from the teardown command stack.
