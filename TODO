@@ -75,3 +75,6 @@ Attach descriptions to external environment variables and add support for
 
 Don't ignore skipped command exit status, verify that it skipped itself by
 checking for specific exit status.
+
+Output assertion path on beginning/entrance, overwriting previous, append
+status on exit/end in ep_log_cook.
