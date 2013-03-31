@@ -23,10 +23,10 @@ function t()
     ep_test_begin -e "${!status_name}" "$name"; (
         ep_test_init
         {
-            echo ". ep.sh"
-            echo "ep_suite_init"
+            echo '. ep.sh'
+            echo 'ep_suite_init "$@"'
             cat
-        } | EP_PROTOCOL=suite bash >/dev/null || exit $?
+        } | EP_PROTOCOL=suite bash -s -- --raw --unfiltered || exit $?
     ); ep_test_end
 }
 
