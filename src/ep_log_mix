@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 --
--- Mix bash test log from output and log message files, with syncing
+-- Mix Epoxy log from output and log message files, with syncing
 --
 -- Copyright (c) 2013 Red Hat, Inc. All rights reserved.
 --

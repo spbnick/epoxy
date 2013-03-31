@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 --
--- Cook bash test log for terse terminal or file output
+-- Cook Epoxy log for terse terminal or file output
 --
 -- Copyright (c) 2013 Red Hat, Inc. All rights reserved.
 --
