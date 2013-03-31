@@ -570,7 +570,8 @@ function ep_test_end()
     fi
 }
 
-# Execute a test.
+# Execute a test command; the command could be an executable, or a function
+# running in a subshell; either of them should adhere to the generic protocol.
 #
 # Args: [option...] [--] name [command [arg...]]
 #
@@ -820,7 +821,8 @@ function ep_suite_end()
     fi
 }
 
-# Execute a suite.
+# Execute a suite command; the command could be an executable, or a function
+# running in a subshell; either of them should adhere to the suite protocol.
 #
 # Args: [option...] [--] name [command [arg...]]
 #
@@ -910,12 +912,14 @@ function ep_suite()
     begin_args[${#begin_args[@]}]="$name"
 
     ep_suite_begin "${begin_args[@]}"
-    if [ $# != 0 ]; then
-        "$@"
-    else
-        (
-            ep_suite_init
-        )
+    if ! $_EP_SKIPPED; then
+        if [ $# != 0 ]; then
+            "$@"
+        else
+            (
+                ep_suite_init
+            )
+        fi
     fi
     ep_suite_end
 }
