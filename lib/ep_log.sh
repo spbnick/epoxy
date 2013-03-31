@@ -22,34 +22,36 @@ declare -r EP_LOG_MESSAGES_FD=8
 # Sync input FD
 declare -r EP_LOG_SYNC_FD=9
 
-# Log file
-declare _EP_LOG_FILE
-# Output filtering enabled
-declare _EP_LOG_FILTER
-# Output filter options
-declare _EP_LOG_FILTER_OPTS
-# Output cooking enabled
-declare _EP_LOG_COOK
 # Log pipe PID
 declare _EP_LOG_PID
 
 # Setup test suite logging.
+# Args: file filter filter_opts cook
 function _ep_log_init()
 {
+    declare -r file="$1"; shift
+    declare -r filter="$1"; shift
+    declare -r filter_opts="$1"; shift
+    declare -r cook="$1"; shift
+
+    ep_abort_assert ep_bool_is_valid "$filter"
+    ep_abort_assert ep_bool_is_valid "$cook"
+    ep_abort_assert test -d "$EP_TMPDIR"
+
     declare -r output_fifo="$EP_TMPDIR/output.fifo"
     declare -r messages_fifo="$EP_TMPDIR/messages.fifo"
     declare -r sync_fifo="$EP_TMPDIR/sync.fifo"
     declare pipe_cmd='ep_log_mix "$o" "$m" "$s"'
 
-    if [ -n "$_EP_LOG_FILE" ]; then
+    if [ -n "$file" ]; then
         pipe_cmd="$pipe_cmd"' | tee "$f"'
     fi
 
-    if $_EP_LOG_FILTER; then
-        pipe_cmd="$pipe_cmd | ep_log_filter $_EP_LOG_FILTER_OPTS"
+    if $filter; then
+        pipe_cmd="$pipe_cmd | ep_log_filter $filter_opts"
     fi
 
-    if $_EP_LOG_COOK; then
+    if $cook; then
         pipe_cmd="$pipe_cmd | ep_log_cook"
     fi
 
@@ -59,7 +61,7 @@ function _ep_log_init()
 
     # Start log-mixing process in a separate session and thus process group,
     # so it doesn't get killed by signals sent to our process group.
-    o="$output_fifo" m="$messages_fifo" s="$sync_fifo" f="$_EP_LOG_FILE" \
+    o="$output_fifo" m="$messages_fifo" s="$sync_fifo" f="$file" \
         setsid bash -c "export -n o m s f; $pipe_cmd" 0</dev/null &
     _EP_LOG_PID="$!"
 

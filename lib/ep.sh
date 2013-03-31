@@ -169,17 +169,17 @@ Any arguments specified after \"--\" are passed to the suite.
 # Args: [cmdline_arg...]
 function ep_suite_init()
 {
+    declare args=()
+    declare args_expr
+    declare log_file=
+    declare log_filter=true
+    declare log_filter_opts="--status=PASSED"
+    declare log_cook=true
+
     # Initialize a generic shell
     _ep_shell_init
 
-    # Set default logging parameters
-    _EP_LOG_FILE=
-    _EP_LOG_FILTER=true
-    _EP_LOG_FILTER_OPTS="--status=PASSED"
-    _EP_LOG_COOK=true
-
     # Collect framework arguments
-    declare args=()
     while [ $# != 0 ]; do
         if [ "$1" == "--" ]; then
             shift;
@@ -195,7 +195,6 @@ function ep_suite_init()
     # If framework arguments are present
     if [ "${#args[@]}" != 0 ]; then
         # Parse framework arguments
-        declare args_expr
         args_expr=`getopt --name \`basename "\$0"\` \
                           --options hl:i:e:c:f:ur \
                           --longoptions help,log-file: \
@@ -211,27 +210,25 @@ function ep_suite_init()
                 -h|--help)
                     _ep_usage; exit 0;;
                 -l|--log-file)
-                    _EP_LOG_FILE="$2";                    shift 2;;
+                    log_file="$2";                          shift 2;;
                 -i|--include)
-                    ep_glob_var_or EP_INCLUDE       "$2"; shift 2;;
+                    ep_glob_var_or EP_INCLUDE       "$2";   shift 2;;
                 -e|--exclude|--dont-include)
-                    ep_glob_var_or EP_DONT_INCLUDE  "$2"; shift 2;;
+                    ep_glob_var_or EP_DONT_INCLUDE  "$2";   shift 2;;
                 -c|--claim)
-                    ep_glob_var_or EP_CLAIM         "$2"; shift 2;;
+                    ep_glob_var_or EP_CLAIM         "$2";   shift 2;;
                 --dont-claim)
-                    ep_glob_var_or EP_DONT_CLAIM    "$2"; shift 2;;
+                    ep_glob_var_or EP_DONT_CLAIM    "$2";   shift 2;;
                 --enable)
-                    ep_glob_var_or EP_ENABLE        "$2"; shift 2;;
+                    ep_glob_var_or EP_ENABLE        "$2";   shift 2;;
                 --dont-enable)
-                    ep_glob_var_or EP_DONT_ENABLE   "$2"; shift 2;;
+                    ep_glob_var_or EP_DONT_ENABLE   "$2";   shift 2;;
                 -f|--filter-opts)
-                    _EP_LOG_FILTER_OPTS="$_EP_LOG_FILTER_OPTS $2"
-                    shift 2
-                    ;;
+                    log_filter_opts="$log_filter_opts $2";  shift 2;;
                 -u|--unfiltered)
-                    _EP_LOG_FILTER=false;                 shift;;
+                    log_filter=false;                       shift;;
                 -r|--raw)
-                    _EP_LOG_COOK=false;                   shift;;
+                    log_cook=false;                         shift;;
                 --) shift; break;;
                 *) ep_abort "Unknown option: $1";;
             esac
@@ -293,7 +290,7 @@ function ep_suite_init()
     # Setup logging, if not done yet
     ep_abort_assert ep_bool_is_valid "${_EP_LOG_SETUP-false}"
     if ! ${_EP_LOG_SETUP-false}; then
-        _ep_log_init
+        _ep_log_init "$log_file" "$log_filter" "$log_filter_opts" "$log_cook"
         _EP_LOG_SETUP=true
         _EP_LOG_OWNER=true
     else
