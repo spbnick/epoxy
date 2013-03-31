@@ -199,8 +199,8 @@ function ep_suite_init()
                           --options hl:i:e:c:f:ur \
                           --longoptions help,log-file: \
                           --longoptions include:,exclude:,dont-include: \
-                          --longoptions claim:dont-claim:enable:dont-enable: \
-                          --longoptions filter-opts:unfiltered,raw \
+                          --longoptions claim:,dont-claim:,enable:,dont-enable: \
+                          --longoptions filter-opts:,unfiltered,raw \
                           -- "${args[@]}"`
         eval set -- "$args_expr"
 
