@@ -409,48 +409,42 @@ function _ep_register_status()
     eval "$count_var=$((count_var+1))"
 }
 
-# Setup a test execution.
-#
-# Args: [option...] [--] name
-#
-# Options:
-#   -d, --disabled                  Mark assertion as disabled.
-#   -w, --waived                    Mark assertion as waived.
-#   -e, --expected-status=STATUS    Expect STATUS exit status. Default is 0.
-#   -b, --brief=TEXT                Attach TEXT brief description to the
-#                                   assertion.
-#   -f, --failure=TEXT              Attach TEXT failure reason to the
-#                                   assertion.
-#
-function ep_test_begin()
+# Parse ep_test_begin arguments into a parameter array and an extra argument
+# array.
+# Args: _param_array _extra_array [ep_test_begin_arg...]
+function _ep_test_begin_parse_args()
 {
-    declare skipped=false
-    declare waived=false
-    declare expected_status=0
-    declare brief=
-    declare failure=
-    declare args
-    args=`getopt --name ${FUNCNAME[0]} \
-                 --options +dwe:b:f: \
-                 --longoptions disabled,waived,expected-status: \
-                 --longoptions brief:,failure: \
-                 -- "$@"`
-    eval set -- "$args"
+    declare -r _param_array="$1";   shift
+    declare -r _extra_array="$1";   shift
+    declare _skipped=false
+    declare _waived=false
+    declare _expected_status=0
+    declare _brief=
+    declare _failure=
+    declare _name=
+    declare _args_expr
+
+    _args_expr=`getopt --name ${FUNCNAME[0]} \
+                       --options +dwe:b:f: \
+                       --longoptions disabled,waived,expected-status: \
+                       --longoptions brief:,failure: \
+                       -- "$@"`
+    eval set -- "$_args_expr"
 
     while true; do
         case "$1" in
             -d|--disabled)
-                skipped=true
+                _skipped=true
                 shift
                 ;;
             -w|--waived)
-                waived=true
+                _waived=true
                 shift
                 ;;
             -e|--expected-status)
-                expected_status="$2";
-                if [[ "$expected_status" == "" ||
-                      "$expected_status" == *[^" "0-9]* ]]; then
+                _expected_status="$2";
+                if [[ "$_expected_status" == "" ||
+                      "$_expected_status" == *[^" "0-9]* ]]; then
                     ep_abort "Invalid -e/--expected-status option value: $2"
                 fi
                 shift 2
@@ -459,14 +453,14 @@ function ep_test_begin()
                 if ! ep_text_is_valid "$2"; then
                     ep_abort "Invalid -b/--brief option value: $2"
                 fi
-                brief="$2"
+                _brief="$2"
                 shift 2
                 ;;
             -f|--failure)
                 if ! ep_text_is_valid "$2"; then
                     ep_abort "Invalid -f/--failure option value: $2"
                 fi
-                failure="$2"
+                _failure="$2"
                 shift 2
                 ;;
             --)
@@ -482,9 +476,32 @@ function ep_test_begin()
     if [ $# == 0 ]; then
         ep_abort "Invalid number of positional arguments"
     fi
-    declare -r name="$1"
+    _name="$1"
     shift
-    ep_abort_if_not ep_name_is_valid "$name"
+    ep_abort_if_not ep_name_is_valid "$_name"
+
+    eval "$_param_array"'=(
+                            "$_skipped"
+                            "$_waived"
+                            "$_expected_status"
+                            "$_brief"
+                            "$_failure"
+                            "$_name"
+                          )
+         '"$_extra_array"'=("$@")'
+}
+
+# Setup a test execution using positional arguments in the order produced by
+# _ep_test_begin_parse_args.
+# Args: skipped waived expected_status brief failure name
+function _ep_test_begin_positional()
+{
+    declare skipped="$1";           shift
+    declare waived="$1";            shift
+    declare expected_status="$1";   shift
+    declare brief="$1";             shift
+    declare failure="$1";           shift
+    declare name="$1";              shift
 
     # "Enter" the assertion
     ep_strstack_push _EP_NAME_STACK / "$name"
@@ -521,6 +538,30 @@ function ep_test_begin()
 
     # Disable errexit so a failed command doesn't exit this shell
     ep_attrs_push +o errexit
+}
+
+# Setup a test execution.
+#
+# Args: [option...] [--] name
+#
+# Options:
+#   -d, --disabled                  Mark assertion as disabled.
+#   -w, --waived                    Mark assertion as waived.
+#   -e, --expected-status=STATUS    Expect STATUS exit status. Default is 0.
+#   -b, --brief=TEXT                Attach TEXT brief description to the
+#                                   assertion.
+#   -f, --failure=TEXT              Attach TEXT failure reason to the
+#                                   assertion.
+#
+function ep_test_begin()
+{
+    declare -a param_array
+    declare -a extra_array
+    _ep_test_begin_parse_args param_array extra_array "$@"
+    if [ ${#extra_array[@]} != 0 ]; then
+        ep_abort "Invalid number of positional arguments"
+    fi
+    _ep_test_begin_positional "${param_array[@]}"
 }
 
 # Conclude a test execution.
@@ -570,66 +611,68 @@ function ep_test_end()
     fi
 }
 
-# Execute a test command; the command could be an executable, or a function
-# running in a subshell; either of them should adhere to the generic protocol.
-#
-# Args: [option...] [--] name [command [arg...]]
-#
-# Options:
-#   -d, --disabled                  Mark assertion as disabled.
-#   -w, --waived                    Mark assertion as waived.
-#   -e, --expected-status=STATUS    Expect STATUS exit status. Default is 0.
-#   -b, --brief=TEXT                Attach TEXT brief description to the
-#                                   assertion.
-#   -f, --failure=TEXT              Attach TEXT failure reason to the
-#                                   assertion.
-#
+# Execute a test command invoking an executable, or a function running in a
+# subshell; either of them should adhere to the generic protocol.
+# Args: ep_test_begin_arg... [command [arg...]]
 function ep_test()
 {
-    declare disabled=false
-    declare waived=false
-    declare expected_status=0
-    declare brief=
-    declare failure=
-    declare args
-    args=`getopt --name ${FUNCNAME[0]} \
-                 --options +dwe:b:f: \
-                 --longoptions disabled,waived,expected-status: \
-                 --longoptions brief:,failure: \
-                 -- "$@"`
-    declare -a begin_args=()
-    eval set -- "$args"
+    declare -a param_array
+    declare -a extra_array
+    _ep_test_begin_parse_args param_array extra_array "$@"
+    _ep_test_begin_positional "${param_array[@]}"
+    if ! $_EP_SKIPPED; then
+        if [ ${#extra_array[@]} != 0 ]; then
+            "${extra_array[@]}"
+        else
+            true
+        fi
+    fi
+    ep_test_end
+}
+
+# Parse ep_suite_begin arguments into a parameter array and an extra argument
+# array.
+# Args: _param_array _extra_array [ep_suite_begin_arg...]
+function _ep_suite_begin_parse_args()
+{
+    declare -r _param_array="$1";   shift
+    declare -r _extra_array="$1";   shift
+    declare _skipped=false
+    declare _waived=false
+    declare _expected_status=0
+    declare _brief=
+    declare _failure=
+    declare _name=
+    declare _args_expr
+
+    _args_expr=`getopt --name ${FUNCNAME[0]} \
+                       --options +dwb:f: \
+                       --longoptions disabled,waived,brief:,failure: \
+                       -- "$@"`
+    eval set -- "$_args_expr"
 
     while true; do
         case "$1" in
             -d|--disabled)
-                disabled=true
+                _skipped=true
                 shift
                 ;;
             -w|--waived)
-                waived=true
+                _waived=true
                 shift
-                ;;
-            -e|--expected-status)
-                expected_status="$2";
-                if [[ "$expected_status" == "" ||
-                      "$expected_status" == *[^" "0-9]* ]]; then
-                    ep_abort "Invalid -e/--expected-status option value: $2"
-                fi
-                shift 2
                 ;;
             -b|--brief)
                 if ! ep_text_is_valid "$2"; then
                     ep_abort "Invalid -b/--brief option value: $2"
                 fi
-                brief="$2"
+                _brief="$2"
                 shift 2
                 ;;
             -f|--failure)
                 if ! ep_text_is_valid "$2"; then
                     ep_abort "Invalid -f/--failure option value: $2"
                 fi
-                failure="$2"
+                _failure="$2"
                 shift 2
                 ;;
             --)
@@ -645,108 +688,30 @@ function ep_test()
     if [ $# == 0 ]; then
         ep_abort "Invalid number of positional arguments"
     fi
-    declare -r name="$1"
+    _name="$1"
     shift
-    ep_abort_if_not ep_name_is_valid "$name"
+    ep_abort_if_not ep_name_is_valid "$_name"
 
-    if $disabled; then
-        begin_args[${#begin_args[@]}]="--disabled"
-    fi
-
-    if $waived; then
-        begin_args[${#begin_args[@]}]="--waived"
-    fi
-
-    if [ "$expected_status" != 0 ]; then
-        begin_args[${#begin_args[@]}]="--expected-status"
-        begin_args[${#begin_args[@]}]="$expected_status"
-    fi
-
-    if [ -n "$brief" ]; then
-        begin_args[${#begin_args[@]}]="--brief"
-        begin_args[${#begin_args[@]}]="$brief"
-    fi
-
-    if [ -n "$failure" ]; then
-        begin_args[${#begin_args[@]}]="--failure"
-        begin_args[${#begin_args[@]}]="$failure"
-    fi
-
-    begin_args[${#begin_args[@]}]="--"
-    begin_args[${#begin_args[@]}]="$name"
-
-    ep_test_begin "${begin_args[@]}"
-    if ! $_EP_SKIPPED; then
-        "$@"
-    fi
-    ep_test_end
+    eval "$_param_array"'=(
+                            "$_skipped"
+                            "$_waived"
+                            "$_brief"
+                            "$_failure"
+                            "$_name"
+                          )
+         '"$_extra_array"'=("$@")'
 }
 
-# Setup a suite execution.
-#
-# Args: [option...] [--] name
-#
-# Options:
-#   -d, --disabled                  Mark assertion as disabled.
-#   -w, --waived                    Mark assertion as waived.
-#   -b, --brief=TEXT                Attach TEXT brief description to the
-#                                   assertion.
-#   -f, --failure=TEXT              Attach TEXT failure reason to the
-#                                   assertion.
-#
-function ep_suite_begin()
+# Setup a suite execution using positional arguments in the order produced by
+# _ep_suite_begin_parse_args.
+# Args: skipped waived brief failure name
+function _ep_suite_begin_positional()
 {
-    declare skipped=false
-    declare waived=false
-    declare brief=
-    declare failure=
-    declare args
-    args=`getopt --name ${FUNCNAME[0]} \
-                 --options +dwb:f: \
-                 --longoptions disabled,waived,brief:failure: \
-                 -- "$@"`
-    eval set -- "$args"
-
-    while true; do
-        case "$1" in
-            -d|--disabled)
-                skipped=true
-                shift
-                ;;
-            -w|--waived)
-                waived=true
-                shift
-                ;;
-            -b|--brief)
-                if ! ep_text_is_valid "$2"; then
-                    ep_abort "Invalid -b/--brief option value: $2"
-                fi
-                brief="$2"
-                shift 2
-                ;;
-            -f|--failure)
-                if ! ep_text_is_valid "$2"; then
-                    ep_abort "Invalid -f/--failure option value: $2"
-                fi
-                failure="$2"
-                shift 2
-                ;;
-            --)
-                shift
-                break
-                ;;
-            *)
-                ep_abort "Unknown option: $1"
-                ;;
-        esac
-    done
-
-    if [ $# != 1 ]; then
-        ep_abort "Invalid number of positional arguments"
-    fi
-    declare -r name="$1"
-    shift
-    ep_abort_if_not ep_name_is_valid "$name"
+    declare skipped="$1";           shift
+    declare waived="$1";            shift
+    declare brief="$1";             shift
+    declare failure="$1";           shift
+    declare name="$1";              shift
 
     # "Enter" the assertion
     ep_strstack_push _EP_NAME_STACK / "$name"
@@ -780,6 +745,29 @@ function ep_suite_begin()
 
     # Disable errexit so a failed command doesn't exit this shell
     ep_attrs_push +o errexit
+}
+
+# Setup a suite execution.
+#
+# Args: [option...] [--] name
+#
+# Options:
+#   -d, --disabled                  Mark assertion as disabled.
+#   -w, --waived                    Mark assertion as waived.
+#   -b, --brief=TEXT                Attach TEXT brief description to the
+#                                   assertion.
+#   -f, --failure=TEXT              Attach TEXT failure reason to the
+#                                   assertion.
+#
+function ep_suite_begin()
+{
+    declare -a param_array
+    declare -a extra_array
+    _ep_suite_begin_parse_args param_array extra_array "$@"
+    if [ ${#extra_array[@]} != 0 ]; then
+        ep_abort "Invalid number of positional arguments"
+    fi
+    _ep_suite_begin_positional "${param_array[@]}"
 }
 
 # Conclude a suite execution.
@@ -821,100 +809,18 @@ function ep_suite_end()
     fi
 }
 
-# Execute a suite command; the command could be an executable, or a function
-# running in a subshell; either of them should adhere to the suite protocol.
-#
-# Args: [option...] [--] name [command [arg...]]
-#
-# Options:
-#   -d, --disabled                  Mark assertion as disabled.
-#   -w, --waived                    Mark assertion as waived.
-#   -b, --brief=TEXT                Attach TEXT brief description to the
-#                                   assertion.
-#   -f, --failure=TEXT              Attach TEXT failure reason to the
-#                                   assertion.
-#
+# Execute a suite command invoking an executable, or a function running in a
+# subshell; either of them should adhere to the suite protocol.
+# Args: ep_suite_begin_arg... [command [arg...]]
 function ep_suite()
 {
-    declare disabled=false
-    declare waived=false
-    declare brief=
-    declare failure=
-    declare -a opts=()
-    declare args
-    args=`getopt --name ${FUNCNAME[0]} \
-                 --options +dwb:f: \
-                 --longoptions disabled,waived,brief:failure: \
-                 -- "$@"`
-    declare -a begin_args=()
-    eval set -- "$args"
-
-    while true; do
-        case "$1" in
-            -d|--disabled)
-                disabled=true
-                shift
-                ;;
-            -w|--waived)
-                waived=true
-                shift
-                ;;
-            -b|--brief)
-                if ! ep_text_is_valid "$2"; then
-                    ep_abort "Invalid -b/--brief option value: $2"
-                fi
-                brief="$2"
-                shift 2
-                ;;
-            -f|--failure)
-                if ! ep_text_is_valid "$2"; then
-                    ep_abort "Invalid -f/--failure option value: $2"
-                fi
-                failure="$2"
-                shift 2
-                ;;
-            --)
-                shift
-                break
-                ;;
-            *)
-                ep_abort "Unknown option: $1"
-                ;;
-        esac
-    done
-
-    if [ $# == 0 ]; then
-        ep_abort "Invalid number of positional arguments"
-    fi
-    declare -r name="$1"
-    shift
-    ep_abort_if_not ep_name_is_valid "$name"
-
-    if $disabled; then
-        begin_args[${#begin_args[@]}]="--disabled"
-    fi
-
-    if $waived; then
-        begin_args[${#begin_args[@]}]="--waived"
-    fi
-
-    if [ -n "$brief" ]; then
-        begin_args[${#begin_args[@]}]="--brief"
-        begin_args[${#begin_args[@]}]="$brief"
-    fi
-
-    if [ -n "$failure" ]; then
-        begin_args[${#begin_args[@]}]="--failure"
-        begin_args[${#begin_args[@]}]="$failure"
-    fi
-
-    begin_args[${#begin_args[@]}]="--"
-    begin_args[${#begin_args[@]}]="$name"
-
-    ep_suite_begin "${begin_args[@]}"
+    declare -a param_array
+    declare -a extra_array
+    _ep_suite_begin_parse_args param_array extra_array "$@"
+    _ep_suite_begin_positional "${param_array[@]}"
     if ! $_EP_SKIPPED; then
-        if [ $# != 0 ]; then
-            "$@"
+        if [ ${#extra_array[@]} != 0 ]; then
+            "${extra_array[@]}"
         else
             (
                 ep_suite_init
