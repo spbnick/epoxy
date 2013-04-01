@@ -11,16 +11,16 @@ if [ -z ${_EP_LOG_SH+set} ]; then
 declare -r _EP_LOG_SH=
 
 # Original stdout FD
-declare -r EP_LOG_STDOUT_FD=5
+declare -r _EP_LOG_STDOUT_FD=5
 # Original stderr FD
-declare -r EP_LOG_STDERR_FD=6
+declare -r _EP_LOG_STDERR_FD=6
 
 # Stdout and stderr output FD
-declare -r EP_LOG_OUTPUT_FD=7
+declare -r _EP_LOG_OUTPUT_FD=7
 # Messages output FD
-declare -r EP_LOG_MESSAGES_FD=8
+declare -r _EP_LOG_MESSAGES_FD=8
 # Sync input FD
-declare -r EP_LOG_SYNC_FD=9
+declare -r _EP_LOG_SYNC_FD=9
 
 # Log pipe PID
 declare _EP_LOG_PID
@@ -66,22 +66,22 @@ function _ep_log_init()
     _EP_LOG_PID="$!"
 
     # Open FIFO's and setup redirections
-    eval "exec $EP_LOG_OUTPUT_FD>\"\$output_fifo\" \
-               $EP_LOG_MESSAGES_FD>\"\$messages_fifo\" \
-               $EP_LOG_SYNC_FD<\"\$sync_fifo\" \
-               $EP_LOG_STDOUT_FD>&1- $EP_LOG_STDERR_FD>&2- \
-               1>&$EP_LOG_OUTPUT_FD 2>&$EP_LOG_OUTPUT_FD"
+    eval "exec $_EP_LOG_OUTPUT_FD>\"\$output_fifo\" \
+               $_EP_LOG_MESSAGES_FD>\"\$messages_fifo\" \
+               $_EP_LOG_SYNC_FD<\"\$sync_fifo\" \
+               $_EP_LOG_STDOUT_FD>&1- $_EP_LOG_STDERR_FD>&2- \
+               1>&$_EP_LOG_OUTPUT_FD 2>&$_EP_LOG_OUTPUT_FD"
 }
 
 # Finalize test suite logging.
 function _ep_log_fini()
 {
     # Close FIFOs and restore stdout and stderr
-    eval "exec $EP_LOG_OUTPUT_FD>&- \
-               $EP_LOG_MESSAGES_FD>&- \
-               $EP_LOG_SYNC_FD<&- \
-               1>&$EP_LOG_STDOUT_FD- \
-               2>&$EP_LOG_STDERR_FD-"
+    eval "exec $_EP_LOG_OUTPUT_FD>&- \
+               $_EP_LOG_MESSAGES_FD>&- \
+               $_EP_LOG_SYNC_FD<&- \
+               1>&$_EP_LOG_STDOUT_FD- \
+               2>&$_EP_LOG_STDERR_FD-"
 
     # Wait for the pipe to finish
     wait "$_EP_LOG_PID"
@@ -92,8 +92,8 @@ function _ep_log_fini()
 function _ep_log_msg()
 {
     declare newline
-    echo "$@" >&$EP_LOG_MESSAGES_FD
-    read -u $EP_LOG_SYNC_FD newline
+    echo "$@" >&$_EP_LOG_MESSAGES_FD
+    read -u $_EP_LOG_SYNC_FD newline
 }
 
 fi # _EP_LOG_SH
