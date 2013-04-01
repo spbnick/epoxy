@@ -64,22 +64,9 @@ function t()
 t empty <<<"\
     -"
 
-t enter <<<"\
-    STRUCT ENTER ''
+t begin <<<"\
+    STRUCT BEGIN ''
     -"
-
-t enter_exit <<<"\
-    STRUCT ENTER ''
-    STRUCT EXIT '' PASSED
-    -
-    PASSED"
-
-t begin_enter_exit <<<"\
-    STRUCT BEGIN '/t'
-    STRUCT ENTER '/t'
-    STRUCT EXIT '/t' PASSED
-    -
-    /t PASSED"
 
 t begin_end <<<"\
     STRUCT BEGIN '/t'
@@ -87,22 +74,10 @@ t begin_end <<<"\
     -
     /t PASSED"
 
-t begin_enter_exit_end <<<"\
-    STRUCT BEGIN '/t'
-    STRUCT ENTER '/t'
-    STRUCT EXIT '/t' PASSED
-    STRUCT END '/t' PASSED
-    -
-    /t PASSED"
-
 t unconcluded <<<"\
     STRUCT BEGIN '/1'
-    STRUCT ENTER '/1'
-    STRUCT EXIT '/1' SKIPPED
     STRUCT END '/1' SKIPPED
     STRUCT BEGIN '/2'
-    STRUCT ENTER '/2'
-    STRUCT EXIT '/2' PASSED
     STRUCT END '/2' PASSED
     -
     /1 SKIPPED
@@ -111,42 +86,29 @@ t unconcluded <<<"\
 
 t unconcluded_unended <<<"\
     STRUCT BEGIN '/1'
-    STRUCT ENTER '/1'
-    STRUCT EXIT '/1' SKIPPED
     STRUCT END '/1' SKIPPED
     STRUCT BEGIN '/2'
-    STRUCT ENTER '/2'
-    STRUCT EXIT '/2' PASSED
     -
     /1 SKIPPED
-    /2 PASSED
-    PASSED?"
+    SKIPPED?"
 
 t concluded <<<"\
-    STRUCT ENTER ''
+    STRUCT BEGIN ''
     STRUCT BEGIN '/1'
-    STRUCT ENTER '/1'
-    STRUCT EXIT '/1' SKIPPED
     STRUCT END '/1' SKIPPED
     STRUCT BEGIN '/2'
-    STRUCT ENTER '/2'
-    STRUCT EXIT '/2' PASSED
     STRUCT END '/2' PASSED
-    STRUCT EXIT '' PASSED
+    STRUCT END '' PASSED
     -
     /1 SKIPPED
     /2 PASSED
     PASSED"
 
-t unexited <<<"\
-    STRUCT ENTER ''
+t concluded_unended <<<"\
+    STRUCT BEGIN ''
     STRUCT BEGIN '/1'
-    STRUCT ENTER '/1'
-    STRUCT EXIT '/1' SKIPPED
     STRUCT END '/1' SKIPPED
     STRUCT BEGIN '/2'
-    STRUCT ENTER '/2'
-    STRUCT EXIT '/2' PASSED
     STRUCT END '/2' PASSED
     -
     /1 SKIPPED
@@ -161,24 +123,18 @@ t end_reason <<<"\
 
 t output_reason <<<"\
     STRUCT BEGIN '/1'
-    STRUCT ENTER '/1'
     OUTPUT Segmentation fault
-    STRUCT EXIT '/1'
     STRUCT END '/1' FAILED
     -
     /1 FAILED \"Segmentation fault\""
 
 t parent_override <<<"\
-    STRUCT ENTER ''
+    STRUCT BEGIN ''
     STRUCT BEGIN '/1'
-    STRUCT ENTER '/1'
     STRUCT BEGIN '/2'
-    STRUCT ENTER '/2'
-    STRUCT EXIT '/2' FAILED
     STRUCT END '/2' FAILED
-    STRUCT EXIT '/1' WAIVED
     STRUCT END '/1' WAIVED
-    STRUCT EXIT '' WAIVED
+    STRUCT END '' WAIVED
     -
     /2 FAILED
     /1 WAIVED
@@ -189,8 +145,6 @@ ep_suite_begin status; (
     for s in "${STATUS_LIST[@]}"; do
         t "$s" <<<"\
             STRUCT BEGIN ''
-            STRUCT ENTER ''
-            STRUCT EXIT '' $s
             STRUCT END '' $s
             -
             $s"

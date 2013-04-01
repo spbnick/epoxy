@@ -298,7 +298,9 @@ function ep_suite_init()
         _EP_LOG_OWNER=false
     fi
 
-    _ep_log_msg "STRUCT ENTER '$_EP_NAME_STACK'"
+    if [ "$_EP_PROTOCOL" == "generic" ]; then
+        _ep_log_msg "STRUCT BEGIN '$_EP_NAME_STACK'"
+    fi
 }
 
 # Cleanup a suite shell.
@@ -327,7 +329,10 @@ function _ep_fini()
 
     trap - EXIT
 
-    _ep_log_msg "STRUCT EXIT  '$_EP_NAME_STACK' `ep_status_to_str $status`"
+    if [ "$_EP_PROTOCOL" == "generic" ]; then
+        _ep_log_msg "STRUCT END   '$_EP_NAME_STACK'" \
+                    "`ep_status_to_str $status`"
+    fi
 
     # Finish logging if this suite started it
     if ${_EP_LOG_SETUP-false} && ${_EP_LOG_OWNER-false}; then

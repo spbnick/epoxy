@@ -187,14 +187,14 @@ local function filter_assertion(f, a)
     -- If it cannot be determined whether the line should be output or not:
     -- if cannot decide yet if the assertion fits depth requirements:
     -- if there can still be child assertions, which would affect height
-    if not (a.exit_status or a.end_status) and
+    if not a.status and
        (-- if it is not above maximum height yet (result may change)
         f.min_depth < 0 and a.depth - a.max_depth >= f.min_depth + 1 or
         -- if it is still below minimum height (result may change)
         f.max_depth < 0 and a.depth - a.max_depth > f.max_depth + 1) or
        -- if cannot decide yet if the assertion fits status requirements
        f.min_status == status_map.PASSED and not a.got_line or
-       f.min_status > status_map.PASSED and not a.end_status then
+       f.min_status > status_map.PASSED and not a.status then
         return nil
     end
 
@@ -205,8 +205,8 @@ local function filter_assertion(f, a)
             f.max_depth < 0 and a.depth - a.max_depth <= f.max_depth + 1) and
            (f.min_status == status_map.SKIPPED or
             f.min_status == status_map.PASSED and a.got_line and
-                a.end_status ~= status_map.SKIPPED or
-            a.end_status >= f.min_status)
+                a.status ~= status_map.SKIPPED or
+            a.status >= f.min_status)
 end
 
 do
@@ -234,33 +234,25 @@ do
                 event, path, tail =
                         tail:match("^(%S+)%s*'([^']*)'%s*(.*)$")
                 depth = #path:gsub("[^/]", "")
-                if event == "BEGIN" or event == "ENTER" then
-                    if event == "BEGIN" or
-                       not cur or path ~= cur.path then
-                        for i = #stack, 1, -1 do
-                            if stack[i].max_depth < depth then
-                                stack[i].max_depth = depth
-                            else
-                                break
-                            end
+                if event == "BEGIN" then
+                    for i = #stack, 1, -1 do
+                        if stack[i].max_depth < depth then
+                            stack[i].max_depth = depth
+                        else
+                            break
                         end
-                        cur = {path         = path,
-                               depth        = depth,
-                               max_depth    = depth,
-                               line_list    = {},
-                               got_line     = (event == "ENTER"),
-                               exit_status  = nil,
-                               end_status   = nil}
-                        table.insert(stack, cur)
                     end
-                elseif event == "EXIT" or event == "END" then
+                    cur = {path         = path,
+                           depth        = depth,
+                           max_depth    = depth,
+                           line_list    = {},
+                           got_line     = false,
+                           status       = nil}
+                    table.insert(stack, cur)
+                elseif event == "END" then
                     local status_name = tail:match("%S+")
                     local status = status_map[status_name]
-                    if event == "EXIT" then
-                        cur.exit_status = status
-                    else
-                        cur.end_status = status
-                    end
+                    cur.status = status
                 end
             end
 
@@ -319,18 +311,8 @@ do
         end
     end
 
-    if cur and #cur.line_list ~= 0 then
-        cur.end_status = cur.exit_status
-        local pass = filter_assertion(filter, cur)
-        if pass == nil then
-            error(("Unterminated assertion %s, " ..
-                   "cannot determine filter outcome"):format(cur.path))
-        elseif pass then
-            -- Output buffered lines
-            for _, l in ipairs(cur.line_list) do
-                io.stdout:write(l, "\n")
-            end
-            io.stdout:flush()
-        end
+    if cur then
+        error(("Unterminated assertion %s, " ..
+               "cannot determine filter outcome"):format(cur.path))
     end
 end

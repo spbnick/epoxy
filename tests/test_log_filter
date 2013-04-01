@@ -105,24 +105,16 @@ ep_suite_begin top; (
             STRUCT END '' PASSED
             -"
         t both_sides -t 1 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED"
     ); ep_suite_end
     ep_suite_begin negative; (
@@ -144,32 +136,22 @@ ep_suite_begin top; (
             OUTPUT
             STRUCT END '/1' PASSED"
         t above_immediate -t -1 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED"
         t above_removed -t -1 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED"
     ); ep_suite_end
 ); ep_suite_end
@@ -179,21 +161,21 @@ ep_suite_begin bottom; (
     ep_suite_begin positive; (
         ep_suite_init
         t above_immediate -b 0 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             OUTPUT
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             OUTPUT
-            STRUCT EXIT '' PASSED"
+            STRUCT END '' PASSED"
         t above_removed -b 1 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             OUTPUT
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             OUTPUT
-            STRUCT EXIT '' PASSED"
+            STRUCT END '' PASSED"
         t below_immediate -b 0 <<<"\
             STRUCT BEGIN '/1'
             OUTPUT
@@ -205,72 +187,56 @@ ep_suite_begin bottom; (
             STRUCT END '/1/2' PASSED
             -"
         t both_sides -b 1 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED"
+            STRUCT END '' PASSED"
     ); ep_suite_end
     ep_suite_begin negative; (
         ep_suite_init
         t above_immediate -b -1 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             OUTPUT
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             OUTPUT
-            STRUCT EXIT '' PASSED"
+            STRUCT END '' PASSED"
         t above_removed -b -1 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED"
+            STRUCT END '' PASSED"
         t below_immediate -b -2 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
-            STRUCT ENTER ''
-            STRUCT EXIT '' PASSED"
+            STRUCT BEGIN ''
+            STRUCT END '' PASSED"
         t below_removed -b -3 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
-            STRUCT ENTER ''
-            STRUCT EXIT '' PASSED"
+            STRUCT BEGIN ''
+            STRUCT END '' PASSED"
     ); ep_suite_end
 ); ep_suite_end
 
@@ -279,119 +245,75 @@ ep_suite_begin top_bottom; (
     ep_suite_begin positive; (
         ep_suite_init
         t -1 -t 2 -b 1 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
             STRUCT BEGIN '/1/2/3'
-            STRUCT ENTER '/1/2/3'
-            STRUCT EXIT '/1/2/3' PASSED
             STRUCT END '/1/2/3' PASSED
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -"
         t 0 -t 1 -b 1 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED"
         t 1 -t 1 -b 2 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
             STRUCT BEGIN '/1/2/3'
-            STRUCT ENTER '/1/2/3'
-            STRUCT EXIT '/1/2/3' PASSED
             STRUCT END '/1/2/3' PASSED
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED"
     ); ep_suite_end
     ep_suite_begin negative; (
         ep_suite_init
         t -1 -t -2 -b -3 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
             STRUCT BEGIN '/1/2/3'
-            STRUCT ENTER '/1/2/3'
-            STRUCT EXIT '/1/2/3' PASSED
             STRUCT END '/1/2/3' PASSED
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -"
         t 0 -t -2 -b -2 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED"
         t 1 -t -3 -b -2 <<<"\
-            STRUCT ENTER ''
+            STRUCT BEGIN ''
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
             STRUCT BEGIN '/1/2/3'
-            STRUCT ENTER '/1/2/3'
-            STRUCT EXIT '/1/2/3' PASSED
             STRUCT END '/1/2/3' PASSED
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED
-            STRUCT EXIT '' PASSED
+            STRUCT END '' PASSED
             -
             STRUCT BEGIN '/1'
-            STRUCT ENTER '/1'
             STRUCT BEGIN '/1/2'
-            STRUCT ENTER '/1/2'
-            STRUCT EXIT '/1/2' PASSED
             STRUCT END '/1/2' PASSED
-            STRUCT EXIT '/1' PASSED
             STRUCT END '/1' PASSED"
     ); ep_suite_end
 ); ep_suite_end
@@ -399,55 +321,41 @@ ep_suite_begin top_bottom; (
 ep_suite_begin status; (
     ep_suite_init
     t waived_failed_out -sFAILED <<<"\
-        STRUCT ENTER ''
+        STRUCT BEGIN ''
         STRUCT BEGIN '/1'
-        STRUCT ENTER '/1'
-        STRUCT EXIT '/1' FAILED
         STRUCT END '/1' WAIVED
-        STRUCT EXIT '' WAIVED
+        STRUCT END '' WAIVED
         -"
     t waived_failed_in -sWAIVED <<<"\
-        STRUCT ENTER ''
+        STRUCT BEGIN ''
         STRUCT BEGIN '/1'
-        STRUCT ENTER '/1'
-        STRUCT EXIT '/1' FAILED
         STRUCT END '/1' WAIVED
-        STRUCT EXIT '' WAIVED
+        STRUCT END '' WAIVED
         -
-        STRUCT ENTER ''
+        STRUCT BEGIN ''
         STRUCT BEGIN '/1'
-        STRUCT ENTER '/1'
-        STRUCT EXIT '/1' FAILED
         STRUCT END '/1' WAIVED
-        STRUCT EXIT '' WAIVED"
+        STRUCT END '' WAIVED"
     t waived_passed -sWAIVED <<<"\
-        STRUCT ENTER ''
+        STRUCT BEGIN ''
         STRUCT BEGIN '/1'
-        STRUCT ENTER '/1'
-        STRUCT EXIT '/1' PASSED
         STRUCT END '/1' WAIVED
-        STRUCT EXIT '' WAIVED
+        STRUCT END '' WAIVED
         -
-        STRUCT ENTER ''
+        STRUCT BEGIN ''
         STRUCT BEGIN '/1'
-        STRUCT ENTER '/1'
-        STRUCT EXIT '/1' PASSED
         STRUCT END '/1' WAIVED
-        STRUCT EXIT '' WAIVED"
+        STRUCT END '' WAIVED"
     t skipped_out -sPASSED <<<"\
-        STRUCT ENTER ''
+        STRUCT BEGIN ''
         STRUCT BEGIN '/1'
         STRUCT END '/1' SKIPPED
         STRUCT BEGIN '/2'
-        STRUCT ENTER '/2'
-        STRUCT EXIT '/2' PASSED
         STRUCT END '/2' PASSED
-        STRUCT EXIT '' PASSED
+        STRUCT END '' PASSED
         -
-        STRUCT ENTER ''
+        STRUCT BEGIN ''
         STRUCT BEGIN '/2'
-        STRUCT ENTER '/2'
-        STRUCT EXIT '/2' PASSED
         STRUCT END '/2' PASSED
-        STRUCT EXIT '' PASSED"
+        STRUCT END '' PASSED"
 ); ep_suite_end

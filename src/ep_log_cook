@@ -138,9 +138,7 @@ local function cook()
 
     -- For each log line
     for line in io.stdin:lines() do
-        status = nil
-        path = line:match("^%s*STRUCT%s+BEGIN%s'([^']*)'") or
-               line:match("^%s*STRUCT%s+ENTER%s'([^']*)'")
+        path = line:match("^%s*STRUCT%s+BEGIN%s'([^']*)'")
         if path ~= nil then
             if first_path == nil then
                 first_path = path
@@ -150,27 +148,22 @@ local function cook()
             if output ~= nil then
                 last_output = output
             else
-                path, status =
-                    line:match("^%s*STRUCT%s+EXIT%s+'([^']*)'%s+(%S+)$")
-                if path == nil then
-                    path, status, reason =
-                        line:match("^%s*STRUCT%s+END%s+" ..
-                                   "'([^']*)'%s+(%S+)%s*(.*)$")
-                    if path ~= nil then
-                        if ISATTY then
-                            -- Erase last running estimate
-                            write_erase_line()
-                        end
-                        conclude(path, status, last_output,
-                                 #reason > 0 and reason or nil)
-                        last_output = nil
-                        status = nil
-                        if ISATTY then
-                            -- Output running estimate
-                            write_estimate()
-                        end
-                        io.flush()
+                path, status, reason =
+                    line:match("^%s*STRUCT%s+END%s+" ..
+                               "'([^']*)'%s+(%S+)%s*(.*)$")
+                if path ~= nil then
+                    if ISATTY then
+                        -- Erase last running estimate
+                        write_erase_line()
                     end
+                    conclude(path, status, last_output,
+                             #reason > 0 and reason or nil)
+                    last_output = nil
+                    if ISATTY then
+                        -- Output running estimate
+                        write_estimate()
+                    end
+                    io.flush()
                 end
             end
         end
@@ -179,11 +172,6 @@ local function cook()
     if ISATTY then
         -- Erase last running estimate
         write_erase_line()
-    end
-
-    -- If there was EXIT without END
-    if status ~= nil then
-        conclude(path, status, last_output, nil)
     end
 
     -- If the log doesn't end with the assertion which began it and so there
