@@ -78,3 +78,5 @@ checking for specific exit status.
 
 Output assertion path on beginning/entrance, overwriting previous, append
 status on exit/end in ep_log_cook.
+
+Add support for breakpoints invoked with ep_break [name].
