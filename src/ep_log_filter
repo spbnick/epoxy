@@ -209,110 +209,135 @@ local function filter_assertion(f, a)
             a.status >= f.min_status)
 end
 
-do
-    local filter = parse_filter_options(arg)
+---
+-- Filter a log line.
+--
+-- @param filter    Filter parameters.
+-- @param stack     Assertion stack.
+-- @param line      Line to filter.
+--
+local function filter_line(filter, stack, line)
+    local level_name
+    local tail
+    local level
+    local cur
+    local event
+    local path
+    local depth
 
-    io.stdout:setvbuf("full")
+    level_name, tail = line:match("^%s*(%S+)%s*(.*)$")
+    level = level_map[level_name]
+    if level > filter.max_level then
+        return
+    end
 
-    local stack = {}
-    local cur = nil
-    local got_first_line = false
+    cur = stack[#stack]
+    if cur then
+        cur.got_line = true
+    end
 
-    for line in io.stdin:lines() do
-        local level_name, tail = line:match("^%s*(%S+)%s*(.*)$")
-        local level = level_map[level_name]
-
-        if level <= filter.max_level then
-            local event, path, depth
-
-            if cur then
-                cur.got_line = true
-            end
-
-            -- If it is a STRUCT message
-            if level == level_map.STRUCT then
-                event, path, tail =
-                        tail:match("^(%S+)%s*'([^']*)'%s*(.*)$")
-                depth = #path:gsub("[^/]", "")
-                if event == "BEGIN" then
-                    for i = #stack, 1, -1 do
-                        if stack[i].max_depth < depth then
-                            stack[i].max_depth = depth
-                        else
-                            break
-                        end
-                    end
-                    cur = {path         = path,
-                           depth        = depth,
-                           max_depth    = depth,
-                           line_list    = {},
-                           got_line     = false,
-                           status       = nil}
-                    table.insert(stack, cur)
-                elseif event == "END" then
-                    local status_name = tail:match("%S+")
-                    local status = status_map[status_name]
-                    cur.status = status
+    -- If it is a STRUCT message
+    if level == level_map.STRUCT then
+        event, path, tail =
+                tail:match("^(%S+)%s*'([^']*)'%s*(.*)$")
+        depth = #path:gsub("[^/]", "")
+        if event == "BEGIN" then
+            for i = #stack, 1, -1 do
+                if stack[i].max_depth < depth then
+                    stack[i].max_depth = depth
+                else
+                    break
                 end
             end
+            cur = {path         = path,
+                   depth        = depth,
+                   max_depth    = depth,
+                   line_list    = {},
+                   got_line     = false,
+                   status       = nil}
+            table.insert(stack, cur)
+        elseif event == "END" then
+            local status_name = tail:match("%S+")
+            local status = status_map[status_name]
+            cur.status = status
+        end
+    end
 
-            if cur == nil then
-                -- Output the line
-                io.stdout:write(line, "\n")
-                io.stdout:flush()
+    if cur == nil then
+        -- Output the line
+        io.stdout:write(line, "\n")
+        io.stdout:flush()
+    else
+        local pending_lines = false
+        -- For each assertion in the stack starting from the root
+        for _, a in ipairs(stack) do
+            local pass = filter_assertion(filter, a)
+            -- If the filter is not ready to decide
+            if pass == nil or pass and pending_lines then
+                -- If it's the current assertion
+                if a == cur then
+                    -- Add the line to the line buffer
+                    table.insert(cur.line_list, line)
+                end
+                if #a.line_list > 0 then
+                    pending_lines = true
+                end
             else
-                local pending_lines = false
-                -- For each assertion in the stack starting from the root
-                for _, a in ipairs(stack) do
-                    local pass = filter_assertion(filter, a)
-                    -- If the filter is not ready to decide
-                    if pass == nil or pass and pending_lines then
-                        -- If it's the current assertion
-                        if a == cur then
-                            -- Add the line to the line buffer
-                            table.insert(cur.line_list, line)
-                        end
-                        if #a.line_list > 0 then
-                            pending_lines = true
-                        end
-                    else
-                        if pass then
-                            -- Output the buffered lines
-                            for _, l in ipairs(a.line_list) do
-                                io.stdout:write(l, "\n")
-                            end
-                            -- If it's the current assertion
-                            if a == cur then
-                                -- Output the current line
-                                io.stdout:write(line, "\n")
-                            end
-                            io.stdout:flush()
-                        end
-                        -- Empty the line buffer
-                        for i, l in pairs(a.line_list) do
-                            a.line_list[i] = nil
-                        end
+                if pass then
+                    -- Output the buffered lines
+                    for _, l in ipairs(a.line_list) do
+                        io.stdout:write(l, "\n")
                     end
-                end
-            end
-
-
-            -- If it was the end of an assertion
-            if cur and level == level_map.STRUCT and event == "END" then
-                table.remove(stack)
-                local parent = stack[#stack]
-                if parent then
-                    for _, l in ipairs(cur.line_list) do
-                        table.insert(parent.line_list, l)
+                    -- If it's the current assertion
+                    if a == cur then
+                        -- Output the current line
+                        io.stdout:write(line, "\n")
                     end
+                    io.stdout:flush()
                 end
-                cur = parent
+                -- Empty the line buffer
+                for i, l in pairs(a.line_list) do
+                    a.line_list[i] = nil
+                end
             end
         end
     end
 
-    if cur then
-        error(("Unterminated assertion %s, " ..
-               "cannot determine filter outcome"):format(cur.path))
+
+    -- If it was the end of an assertion
+    if cur and level == level_map.STRUCT and event == "END" then
+        table.remove(stack)
+        local parent = stack[#stack]
+        if parent then
+            for _, l in ipairs(cur.line_list) do
+                table.insert(parent.line_list, l)
+            end
+        end
+        cur = parent
     end
+end
+
+-- Filter stdin to stdout
+--
+-- @param filter    Filter parameters.
+--
+local function filter(filter)
+    local stack = {}
+    for line in io.stdin:lines() do
+        filter_line(filter, stack, line)
+    end
+
+    if #stack > 0 then
+        error(("Unterminated assertion %s, " ..
+               "cannot determine filter outcome"):format(stack[#stack].path))
+    end
+end
+
+io.stdout:setvbuf("full")
+local ok, errmsg = pcall(filter, parse_filter_options(arg))
+if ok then
+    os.exit(0)
+else
+    io.stderr:write(errmsg)
+    os.exit(1)
 end
