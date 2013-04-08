@@ -131,7 +131,7 @@ end
 local function cook()
     local first_path
     local output
-    local last_output
+    local output_stack={}
     local path
     local status
     local reason
@@ -140,13 +140,16 @@ local function cook()
     for line in io.stdin:lines() do
         path = line:match("^%s*STRUCT%s+BEGIN%s'([^']*)'")
         if path ~= nil then
+            table.insert(output_stack, "")
             if first_path == nil then
                 first_path = path
             end
         else
             output = line:match("^%s*OUTPUT%s+(.+)$")
             if output ~= nil then
-                last_output = output
+                if #output > 0 then
+                    output_stack[#output_stack] = output
+                end
             else
                 path, status, reason =
                     line:match("^%s*STRUCT%s+END%s+" ..
@@ -156,9 +159,12 @@ local function cook()
                         -- Erase last running estimate
                         write_erase_line()
                     end
-                    conclude(path, status, last_output,
+                    conclude(path, status,
+                             #output_stack[#output_stack] > 0
+                                and output_stack[#output_stack]
+                                 or nil,
                              #reason > 0 and reason or nil)
-                    last_output = nil
+                    table.remove(output_stack)
                     if ISATTY then
                         -- Output running estimate
                         write_estimate()
