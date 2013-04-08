@@ -37,18 +37,18 @@ function asi()
 
 ep_suite_begin no_args; (
     ep_suite_init
-    ep_test -e 1 status eval "ep_glob_escape >/dev/null 2>&1"
-    ep_test -e 1 stdout \
+    ep_test status -e 1 eval "ep_glob_escape >/dev/null 2>&1"
+    ep_test stdout -e 1 \
                     eval "ep_glob_escape 2>/dev/null | { ! grep -q .; }"
-    ep_test -e 1 stderr \
+    ep_test stderr -e 1 \
                     eval "ep_glob_escape 2>&1 >/dev/null | grep -q ^Usage:"
 ); ep_suite_end
 
 ep_suite_begin options; (
     ep_suite_init
-    ep_test -e 0  none    eval "ep_glob_escape a >/dev/null"
+    ep_test none    -e 0  eval "ep_glob_escape a >/dev/null"
     for o in -h --help; do
-        ep_suite_begin -- $o; (
+        ep_suite_begin $o; (
             ep_suite_init
             # check that stdout contains "Usage:"
             ep_test status eval "ep_glob_escape $o >/dev/null 2>&1"
@@ -59,10 +59,10 @@ ep_suite_begin options; (
         ); ep_suite_end
     done
     for o in -s --set-item; do
-        ep_suite_begin -- $o; (
+        ep_suite_begin $o; (
             ep_suite_init
-            ep_test -e 0  valid     eval "ep_glob_escape $o a >/dev/null"
-            ep_test -e 1  invalid   eval "ep_glob_escape $o @\( 2>/dev/null"
+            ep_test valid     -e 0  eval "ep_glob_escape $o a >/dev/null"
+            ep_test invalid   -e 1  eval "ep_glob_escape $o @\( 2>/dev/null"
         ); ep_suite_end
     done
 ); ep_suite_end

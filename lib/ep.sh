@@ -421,12 +421,18 @@ function _ep_test_begin_parse_args()
 {
     declare -r _param_array="$1";   shift
     declare -r _extra_array="$1";   shift
+
+    if [ $# == 0 ]; then
+        ep_abort "Assertion name is not specified"
+    fi
+    declare _name="$1";             shift
+    ep_abort_if_not ep_name_is_valid "$_name"
+
     declare _skipped=false
     declare _waived=false
     declare _expected_status=0
     declare _brief=
     declare _failure=
-    declare _name=
     declare _args_expr
 
     _args_expr=`getopt --name ${FUNCNAME[0]} \
@@ -478,35 +484,28 @@ function _ep_test_begin_parse_args()
         esac
     done
 
-    if [ $# == 0 ]; then
-        ep_abort "Invalid number of positional arguments"
-    fi
-    _name="$1"
-    shift
-    ep_abort_if_not ep_name_is_valid "$_name"
-
     eval "$_param_array"'=(
+                            "$_name"
                             "$_skipped"
                             "$_waived"
                             "$_expected_status"
                             "$_brief"
                             "$_failure"
-                            "$_name"
                           )
          '"$_extra_array"'=("$@")'
 }
 
 # Setup a test execution using positional arguments in the order produced by
 # _ep_test_begin_parse_args.
-# Args: skipped waived expected_status brief failure name
+# Args: name skipped waived expected_status brief failure
 function _ep_test_begin_positional()
 {
+    declare name="$1";              shift
     declare skipped="$1";           shift
     declare waived="$1";            shift
     declare expected_status="$1";   shift
     declare brief="$1";             shift
     declare failure="$1";           shift
-    declare name="$1";              shift
 
     # "Enter" the assertion
     ep_strstack_push _EP_NAME_STACK / "$name"
@@ -547,7 +546,7 @@ function _ep_test_begin_positional()
 
 # Setup a test execution.
 #
-# Args: [option...] [--] name
+# Args: name [option...]
 #
 # Options:
 #   -d, --disabled                  Mark assertion as disabled.
@@ -618,7 +617,7 @@ function ep_test_end()
 
 # Execute a test command invoking an executable, or a function running in a
 # subshell; either of them should adhere to the generic protocol.
-# Args: ep_test_begin_arg... [command [arg...]]
+# Args: ep_test_begin_arg... [--] [command [arg...]]
 function ep_test()
 {
     declare -a param_array
@@ -642,12 +641,18 @@ function _ep_suite_begin_parse_args()
 {
     declare -r _param_array="$1";   shift
     declare -r _extra_array="$1";   shift
+
+    if [ $# == 0 ]; then
+        ep_abort "Assertion name is not specified"
+    fi
+    declare _name="$1";             shift
+    ep_abort_if_not ep_name_is_valid "$_name"
+
     declare _skipped=false
     declare _waived=false
     declare _expected_status=0
     declare _brief=
     declare _failure=
-    declare _name=
     declare _args_expr
 
     _args_expr=`getopt --name ${FUNCNAME[0]} \
@@ -690,33 +695,26 @@ function _ep_suite_begin_parse_args()
         esac
     done
 
-    if [ $# == 0 ]; then
-        ep_abort "Invalid number of positional arguments"
-    fi
-    _name="$1"
-    shift
-    ep_abort_if_not ep_name_is_valid "$_name"
-
     eval "$_param_array"'=(
+                            "$_name"
                             "$_skipped"
                             "$_waived"
                             "$_brief"
                             "$_failure"
-                            "$_name"
                           )
          '"$_extra_array"'=("$@")'
 }
 
 # Setup a suite execution using positional arguments in the order produced by
 # _ep_suite_begin_parse_args.
-# Args: skipped waived brief failure name
+# Args: name skipped waived brief failure
 function _ep_suite_begin_positional()
 {
+    declare name="$1";              shift
     declare skipped="$1";           shift
     declare waived="$1";            shift
     declare brief="$1";             shift
     declare failure="$1";           shift
-    declare name="$1";              shift
 
     # "Enter" the assertion
     ep_strstack_push _EP_NAME_STACK / "$name"
@@ -754,7 +752,7 @@ function _ep_suite_begin_positional()
 
 # Setup a suite execution.
 #
-# Args: [option...] [--] name
+# Args: name [option...]
 #
 # Options:
 #   -d, --disabled                  Mark assertion as disabled.
@@ -816,7 +814,7 @@ function ep_suite_end()
 
 # Execute a suite command invoking an executable, or a function running in a
 # subshell; either of them should adhere to the suite protocol.
-# Args: ep_suite_begin_arg... [command [arg...]]
+# Args: ep_suite_begin_arg... [--] [command [arg...]]
 function ep_suite()
 {
     declare -a param_array

@@ -19,20 +19,20 @@ function test_glob()
     declare -r full_status="$4"
     declare -r ppfx_status="$5"
     declare -r tpfx_status="$6"
-    ep_suite_begin -- "$name"; (
+    ep_suite_begin "$name"; (
         ep_suite_init
-        ep_test -e "$full_status" "full" ep_glob    -- "$pattern" "$text"
-        ep_test -e "$ppfx_status" "ppfx" ep_glob -p -- "$pattern" "$text"
-        ep_test -e "$tpfx_status" "tpfx" ep_glob -t -- "$pattern" "$text"
+        ep_test "full" -e "$full_status" ep_glob    -- "$pattern" "$text"
+        ep_test "ppfx" -e "$ppfx_status" ep_glob -p -- "$pattern" "$text"
+        ep_test "tpfx" -e "$tpfx_status" ep_glob -t -- "$pattern" "$text"
     ); ep_suite_end
 }
 
 ep_suite_begin no_args; (
     ep_suite_init
-    ep_test -e 2 status eval "ep_glob >/dev/null 2>&1"
-    ep_test -e 2 stdout \
+    ep_test status -e 2 eval "ep_glob >/dev/null 2>&1"
+    ep_test stdout -e 2 \
                     eval "ep_glob 2>/dev/null | { ! grep -q .; }"
-    ep_test -e 2 stderr \
+    ep_test stderr -e 2 \
                     eval "ep_glob 2>&1 >/dev/null | grep -q ^Usage:"
 ); ep_suite_end
 
@@ -40,18 +40,18 @@ ep_suite_begin options; (
     ep_suite_init
     ep_suite_begin none; (
         ep_suite_init
-        ep_test -e 0  match       ep_glob a   a
-        ep_test -e 1  mismatch    ep_glob a   b
+        ep_test match       -e 0 ep_glob a   a
+        ep_test mismatch    -e 1 ep_glob a   b
     ); ep_suite_end
     ep_suite_begin termination; (
         ep_suite_init
-        ep_test -e 1 before_args  ep_glob -- --help ------
-        ep_test -e 1 between_args ep_glob help -- --help
-        ep_test -e 2 after_args \
+        ep_test before_args  -e 1 ep_glob -- --help ------
+        ep_test between_args -e 1 ep_glob help -- --help
+        ep_test after_args   -e 2 \
                         eval "ep_glob help help -- --help 2>/dev/null"
     ); ep_suite_end
     for o in -h --help; do
-        ep_suite_begin -- $o; (
+        ep_suite_begin $o; (
             ep_suite_init
             # check that stdout contains "Usage:"
             ep_test status eval "ep_glob $o >/dev/null 2>&1"
@@ -62,17 +62,17 @@ ep_suite_begin options; (
         ); ep_suite_end
     done
     for o in -p --pattern-prefix; do
-        ep_suite_begin -- $o; (
+        ep_suite_begin $o; (
             ep_suite_init
-            ep_test -e 0  match     ep_glob $o ab   a
-            ep_test -e 1  mismatch  ep_glob $o a    ab
+            ep_test match     -e 0  ep_glob $o ab   a
+            ep_test mismatch  -e 1  ep_glob $o a    ab
         ); ep_suite_end
     done
     for o in -t --text-prefix; do
-        ep_suite_begin -- $o; (
+        ep_suite_begin $o; (
             ep_suite_init
-            ep_test -e 1  match     ep_glob $o ab   a
-            ep_test -e 0  mismatch  ep_glob $o a    ab
+            ep_test match     -e 1  ep_glob $o ab   a
+            ep_test mismatch  -e 0  ep_glob $o a    ab
         ); ep_suite_end
     done
 ); ep_suite_end
@@ -228,19 +228,19 @@ ep_suite_begin path; (
     ep_suite_init
 
     # Text being parent of pattern
-    ep_test -e 1  parent_as_child     ep_glob -t  "/aaa/bbb/" "/aaa"
-    ep_test -e 1  parent_as_exact     ep_glob     "/aaa/bbb"  "/aaa"
-    ep_test -e 0  parent_as_parent    ep_glob -p  "/aaa/bbb"  "/aaa/"
+    ep_test parent_as_child     -e 1  ep_glob -t  "/aaa/bbb/" "/aaa"
+    ep_test parent_as_exact     -e 1  ep_glob     "/aaa/bbb"  "/aaa"
+    ep_test parent_as_parent    -e 0  ep_glob -p  "/aaa/bbb"  "/aaa/"
 
     # Text being pattern
-    ep_test -e 1  exact_as_child      ep_glob -t  "/aaa/bbb/" "/aaa/bbb"
-    ep_test -e 0  exact_as_exact      ep_glob     "/aaa/bbb"  "/aaa/bbb"
-    ep_test -e 1  exact_as_parent     ep_glob -p  "/aaa/bbb"  "/aaa/bbb/"
+    ep_test exact_as_child      -e 1  ep_glob -t  "/aaa/bbb/" "/aaa/bbb"
+    ep_test exact_as_exact      -e 0  ep_glob     "/aaa/bbb"  "/aaa/bbb"
+    ep_test exact_as_parent     -e 1  ep_glob -p  "/aaa/bbb"  "/aaa/bbb/"
 
     # Text being child of pattern
-    ep_test -e 0  child_as_child      ep_glob -t  "/aaa/bbb/" "/aaa/bbb/ccc"
-    ep_test -e 1  child_as_exact      ep_glob     "/aaa/bbb" "/aaa/bbb/ccc"
-    ep_test -e 1  child_as_parent     ep_glob -p  "/aaa/bbb" "/aaa/bbb/ccc/"
+    ep_test child_as_child      -e 0  ep_glob -t  "/aaa/bbb/" "/aaa/bbb/ccc"
+    ep_test child_as_exact      -e 1  ep_glob     "/aaa/bbb" "/aaa/bbb/ccc"
+    ep_test child_as_parent     -e 1  ep_glob -p  "/aaa/bbb" "/aaa/bbb/ccc/"
 ); ep_suite_end
 
 ep_suite escape test_glob_escape

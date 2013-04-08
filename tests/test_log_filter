@@ -21,7 +21,7 @@ function t()
     declare -r expected_output=`echo -n "$input_and_expected_output" |
                                     sed -ne 'x; /^-$/{x;p;x}; x; /^-$/x'`
 
-    ep_test_begin -- "$name"; (
+    ep_test_begin "$name"; (
         ep_test_init
         declare output
         declare status=0

@@ -20,7 +20,7 @@ function t()
     declare -r status_suffix="$2"
     declare -r status_name="EP_STATUS_`echo $status_suffix | tr a-z A-Z`"
 
-    ep_test_begin -e "${!status_name}" "$name"; (
+    ep_test_begin "$name" -e "${!status_name}"; (
         ep_test_init
         {
             echo '. ep.sh'
@@ -96,55 +96,55 @@ ep_suite_begin test; (
 
     ep_suite_begin options; (
         ep_suite_init
-        t none                  PASSED  <<<"ep_test               1"
-        t w                     WAIVED  <<<"ep_test -w            1"
-        t waived                WAIVED  <<<"ep_test --waived      1"
-        t s                     SKIPPED <<<"ep_test -d            1"
-        t skipped               SKIPPED <<<"ep_test --disabled    1"
-        t e0                    PASSED  <<<"ep_test -e0           1   true"
-        t e1                    PASSED  <<<"ep_test -e1           1   false"
-        t expected_eq_0         PASSED  <<<"ep_test --expected=0  1   true"
-        t expected_eq_1         PASSED  <<<"ep_test --expected=1  1   false"
+        t none                  PASSED  <<<"ep_test 1"
+        t w                     WAIVED  <<<"ep_test 1 -w"
+        t waived                WAIVED  <<<"ep_test 1 --waived"
+        t s                     SKIPPED <<<"ep_test 1 -d"
+        t skipped               SKIPPED <<<"ep_test 1 --disabled"
+        t e0                    PASSED  <<<"ep_test 1 -e0             true"
+        t e1                    PASSED  <<<"ep_test 1 -e1             false"
+        t expected_eq_0         PASSED  <<<"ep_test 1 --expected=0    true"
+        t expected_eq_1         PASSED  <<<"ep_test 1 --expected=1    false"
     ); ep_suite_end
 
     ep_suite_begin one; (
         ep_suite_init
-        t empty                 PASSED  <<<"ep_test       1"
-        t empty_waived          WAIVED  <<<"ep_test -w    1"
-        t empty_skipped         SKIPPED <<<"ep_test -d    1"
-        t empty_waived_skipped  SKIPPED <<<"ep_test -w -d 1"
-        t ok                    PASSED  <<<"ep_test       1 true"
-        t ok_waived             WAIVED  <<<"ep_test -w    1 true"
-        t ok_skipped            SKIPPED <<<"ep_test -d    1 true"
-        t ok_waived_skipped     SKIPPED <<<"ep_test -w -d 1 true"
-        t failed                FAILED  <<<"ep_test       1 false"
-        t failed_waived         WAIVED  <<<"ep_test -w    1 false"
-        t failed_waived_skipped SKIPPED <<<"ep_test -w -d 1 false"
-        t failed_skipped        SKIPPED <<<"ep_test -d    1 false"
+        t empty                 PASSED  <<<"ep_test 1"
+        t empty_waived          WAIVED  <<<"ep_test 1 -w"
+        t empty_skipped         SKIPPED <<<"ep_test 1 -d"
+        t empty_waived_skipped  SKIPPED <<<"ep_test 1 -w -d"
+        t ok                    PASSED  <<<"ep_test 1       true"
+        t ok_waived             WAIVED  <<<"ep_test 1 -w    true"
+        t ok_skipped            SKIPPED <<<"ep_test 1 -d    true"
+        t ok_waived_skipped     SKIPPED <<<"ep_test 1 -w -d true"
+        t failed                FAILED  <<<"ep_test 1       false"
+        t failed_waived         WAIVED  <<<"ep_test 1 -w    false"
+        t failed_waived_skipped SKIPPED <<<"ep_test 1 -w -d false"
+        t failed_skipped        SKIPPED <<<"ep_test 1 -d    false"
     ); ep_suite_end
 
     ep_suite_begin two; (
         ep_suite_init
         t fail_fail       FAILED    <<<"
-            ep_test       1 false;    ep_test       2 false"
+            ep_test 1       false;    ep_test 2       false"
         t fail_waive      FAILED    <<<"
-            ep_test       1 false;    ep_test -w    2 true"
+            ep_test 1       false;    ep_test 2 -w    true"
         t fail_ok         FAILED    <<<"
-            ep_test       1 false;    ep_test       2 true"
+            ep_test 1       false;    ep_test 2       true"
 
         t waive_fail      FAILED    <<<"
-            ep_test -w    1 true;     ep_test       2 false"
+            ep_test 1 -w    true;     ep_test 2       false"
         t waive_waive     WAIVED    <<<"
-            ep_test -w    1 true;     ep_test -w    2 true"
+            ep_test 1 -w    true;     ep_test 2 -w    true"
         t waive_ok        WAIVED    <<<"
-            ep_test -w    1 true;     ep_test -w    2 true"
+            ep_test 1 -w    true;     ep_test 2 -w    true"
 
         t ok_fail         FAILED    <<<"
-            ep_test       1 true;     ep_test       2 false"
+            ep_test 1       true;     ep_test 2       false"
         t ok_waive        WAIVED    <<<"
-            ep_test       1 true;     ep_test -w    2 true"
+            ep_test 1       true;     ep_test 2 -w    true"
         t ok_ok           PASSED    <<<"
-            ep_test       1 true;     ep_test       2 true"
+            ep_test 1       true;     ep_test 2       true"
     ); ep_suite_end
 ); ep_suite_end
 
@@ -155,8 +155,8 @@ ep_suite_begin suite; (
         ep_suite_init
         ep_suite_begin executable; (
             ep_suite_init
-            t empty         PASSED    <<<"ep_suite       1"
-            t empty_waived  WAIVED    <<<"ep_suite -w    1"
+            t empty         PASSED    <<<"ep_suite 1"
+            t empty_waived  WAIVED    <<<"ep_suite 1 -w"
         ); ep_suite_end
 
         ep_suite_begin inline; (
@@ -168,9 +168,9 @@ ep_suite_begin suite; (
             declare status
             declare script_var
             declare -r script_empty=""
-            declare -r script_skipped="ep_test -d 1"
+            declare -r script_skipped="ep_test 1 -d"
             declare -r script_passed="ep_test 1 true"
-            declare -r script_waived="ep_test -w 1"
+            declare -r script_waived="ep_test 1 -w"
             declare -r script_failed="ep_test 1 false"
             declare -r script_errored="false"
             declare -r script_panicked="ep_teardown_push false"
@@ -179,7 +179,7 @@ ep_suite_begin suite; (
             while read mask opts script status; do
                 script_var="script_$script"
                 t ${mask}_${script} $status <<<"
-                    ep_suite_begin $opts 1; (
+                    ep_suite_begin 1 $opts; (
                         ep_suite_init
                         ${!script_var}
                     ); ep_suite_end"
