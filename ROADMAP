@@ -8,5 +8,4 @@ Requirements
 
 TODO
 
-* Support for converting log to beakerlib log interactively.
 * Suite and test construction validation.

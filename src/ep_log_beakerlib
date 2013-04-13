@@ -1,0 +1,151 @@
+#!/bin/bash
+#
+# Convert Epoxy log to Beakerlib log
+#
+# Copyright (c) 2013 Red Hat, Inc. All rights reserved.
+#
+# This copyrighted material is made available to anyone wishing
+# to use, modify, copy, or redistribute it subject to the terms
+# and conditions of the GNU General Public License version 2.
+
+. /usr/share/beakerlib/beakerlib.sh
+
+set -o errexit -o pipefail -o nounset
+
+# Output program usage information
+function usage()
+{
+    echo "\
+Usage: `basename \"\$0\"` [OPTION]...
+Convert Epoxy log to Beakerlib log.
+
+Options:
+    -h, --help          Output this help message and exit.
+    -d, --depth=NUMBER  Consider assertions at depth NUMBER to be Beakerlib
+                        phases. Negative values count from the bottom.
+                        Assertions immediately below are considered tests.
+
+Default options:
+    --depth=1
+"
+}
+
+# Run a command with relaxed shell attributes
+# Args: [argv...]
+function relaxed()
+{
+    set +o errexit +o pipefail +o nounset
+    "$@"
+    set -o errexit -o pipefail -o nounset
+}
+
+#
+# Read command-line arguments
+#
+declare depth=1
+declare args_expr
+args_expr=`getopt --name \`basename "\$0"\` \
+                  --options h,d: \
+                  --longoptions help,depth: \
+                  -- "$@"` ||
+    { usage >&2; exit 1; }
+eval set -- "$args_expr"
+while true; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -d|--depth)
+            depth="${2//[[:blank:]]/}"
+            if ! [[ "$depth" =~ ^-?[0-9]+$ ]]; then
+                echo "Invalid -d/--depth option value: $2" >&2
+                usage >&2
+                exit 1
+            fi
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 127
+            ;;
+    esac
+done
+
+if [ $# != 0 ]; then
+    echo "Positional parameters are not accepted" >&2
+    usage >&2
+    exit 1
+fi
+
+#
+# Convert
+#
+declare -r top="$((depth))"
+declare -r bottom="$((depth == -1 ? -1 : depth + 1))"
+
+relaxed rlJournalStart
+
+ep_log_filter --level=STRUCT --top="$top" --bottom="$bottom" --status=PASSED |
+{
+    declare phase_path=
+    declare test_path=
+    declare level
+    declare event
+    declare quoted_path
+    declare tail
+    declare path
+    declare test_description
+    declare status
+    declare status_reason
+    declare msg
+
+    if (( bottom == top )); then
+        relaxed rlPhaseStartTest
+    fi
+
+    while read level event quoted_path tail; do
+        path="${quoted_path:1:${#quoted_path}-2}"
+        if [ "$event" == "BEGIN" ]; then
+            if (( bottom > top )) && [ -z "$phase_path" ]; then
+                relaxed rlPhaseStartTest "$path${tail:+ - ${tail}}"
+                phase_path="$path"
+            elif [ -z "$test_path" ]; then
+                test_path="$path"
+                test_description="$tail"
+            fi
+        elif [ "$event" == "END" ]; then
+            if [ "$path" == "$test_path" ]; then
+                read status status_reason <<<"$tail"
+                msg="$path${test_description:+ - $test_description}"
+                msg="$msg${status_reason:+ - Failure reason: $status_reason}"
+                case "$status" in
+                    PASSED|WAIVED)
+                        relaxed rlPass "$msg"
+                        ;;
+                    FAILED)
+                        relaxed rlFail "$msg"
+                        ;;
+                    ERRORED|PANICKED|ABORTED)
+                        relaxed rlLogError "$path - $status"
+                        relaxed rlFail "$msg"
+                        ;;
+                esac
+                test_path=
+            elif (( bottom > top )) && [ "$path" == "$phase_path" ]; then
+                relaxed rlPhaseEnd
+                phase_path=
+            fi
+        fi
+    done
+
+    if (( bottom == top )); then
+        relaxed rlPhaseEnd
+    fi
+}
+
+relaxed rlJournalEnd

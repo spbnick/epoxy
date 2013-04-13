@@ -16,9 +16,10 @@
 # Boston, MA 02110-1301, USA.
 
 dist_bin_SCRIPTS = \
-    ep_glob         \
-    ep_glob_escape  \
-    ep_log_cook     \
-    ep_log_filter   \
+    ep_glob             \
+    ep_glob_escape      \
+    ep_log_beakerlib    \
+    ep_log_cook         \
+    ep_log_filter       \
     ep_log_mix
 
