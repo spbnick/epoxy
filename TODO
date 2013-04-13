@@ -80,3 +80,17 @@ Output assertion path on beginning/entrance, overwriting previous, append
 status on exit/end in ep_log_cook.
 
 Add support for breakpoints invoked with ep_break [name].
+
+Think about making a vim syntax highlighting for main framework functions.
+
+Think about introducing assertion dependencies.
+
+Think about removing "_suite" from ep_suite(|_begin|_end|_init) again.  Ha!
+Seems like a nice idea!
+
+Think about making ep_abort_if_not arguments eval arguments.
+
+Think about introducing WAIVED and SKIPPED assertions with STRUCT BEGIN.
+
+Consider citing last line of output as assertion status reason on ep_log_mix
+stage, not on ep_log_cook.
