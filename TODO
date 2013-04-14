@@ -94,3 +94,13 @@ Think about introducing WAIVED and SKIPPED assertions with STRUCT BEGIN.
 
 Consider citing last line of output as assertion status reason on ep_log_mix
 stage, not on ep_log_cook.
+
+Consider replacing _ with - in executable names.
+
+Consider adding an ep_env executable producing a script setting the
+installation-dependent veriables.
+
+Reimplement ep_log_mix and ep_log_cook in Python to improve RHEL5.x and
+RHEL6.x compatibility.
+
+Add tracing support.
