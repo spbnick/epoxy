@@ -7,3 +7,4 @@ config.status
 configure
 install-sh
 missing
+*.tar.gz
