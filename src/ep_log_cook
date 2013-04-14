@@ -8,10 +8,8 @@
 -- to use, modify, copy, or redistribute it subject to the terms
 -- and conditions of the GNU General Public License version 2.
 
-local posix = require("posix")
-
 --- TTY output flag - try if stdout is connected to a terminal
-local ISATTY = posix.ttyname(posix.fileno(io.stdout)) ~= nil
+local ISATTY = os.execute("test -t 1") == 0
 
 --- Status code -> name map
 local STATUS_CODE_NAME = {
