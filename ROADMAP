@@ -3,6 +3,7 @@ RELEASE 1
 Requirements
 
 * Support RHEL5.x
+* Support RHEL6.x
 * Allow Beaker interaction.
 * Allow automatic uploading of test plans and test runs to tcms.
 
