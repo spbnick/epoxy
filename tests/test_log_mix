@@ -41,6 +41,7 @@ function t()
         ep_test_init
         declare result_log
         declare status=0
+        declare result=0
         result_log=`eval "
               exec $EP_USER_FD1>&1- $EP_USER_FD2>&2-
               ep_log_mix \"\$OUTPUT_FIFO\" \
@@ -54,7 +55,7 @@ function t()
         "` || status=$?
         if [ $status != 0 ]; then
             echo "Unexpected exit status: $status"
-            exit 1
+            result=1
         fi
         if [ "$result_log" != "$expected_log" ]; then
             echo "=== EXPECTING ==="
@@ -63,8 +64,9 @@ function t()
             echo "$result_log"
             echo "================="
             echo "Unexpected output"
-            exit 1
+            result=1
         fi
+        exit $result
     ); ep_test_end
 }
 
