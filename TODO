@@ -12,9 +12,6 @@ called, etc.
 Consider implementing ep_glob_valid or ep_glob_is_valid for checking pattern
 validity. This might require pattern "compilation" and common library.
 
-Oh, BTW, newlines are allowed in XML attributes, so it's safe to specify
-BT_INCLUDE and other whitespace-separated list variable values.
-
 Consider adding support for disabling ep_abort_assert execution to improve
 performance. Measure the difference.
 
