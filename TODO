@@ -24,10 +24,6 @@ specified through the appropriate environment variables.
 Add support for entering interactive mode before/after a specific or a failed
 test.
 
-Consider renaming ERRORED, PANICKED and ABORTED statuses to ERROR_SETUP,
-ERROR_CLEANUP and ERROR_ASSERTION, or something, to simplify status
-interpretation for new users.
-
 Consider adding abbreviated interface support:
     ep_s
     ep_si
@@ -38,17 +34,6 @@ Consider adding abbreviated interface support:
     ep_tb
     ep_te
 
-Think of renaming "unwaiving" to "claiming".
-
-Convert tool executables to Python 2.4+ for better portability to RHEL5.
-
-Add proper logging and reporting support. Design logging protocol. Design log
-filtering tool supporting filtering by minimum message severity, test depth
-and height, and minimum test status severity. Develop several sinks: simple
-file writing sink, rhts logging sink, human-summary sink (for immediate
-console output).
-
-Consider distributing logging with tee and process substitution.
 Console logging should be done to stdout. Stderr should receive only
 pre-logging error messages and out-of-band framework errors.
 
@@ -56,19 +41,12 @@ Consider adding status explanations to the human-summary sink.
 
 Use the following log structure:
 STRUCT BEGIN 'path' description
-       ENTER 'path'
-       EXIT  'path' status
        END   'path' status reason
 OUTPUT line
 TRACE line
 
 There should only be such top level tags as make sense to be separate
 filtering levels.
-
-The default severity (?) for the log file sink would be OUTPUT.
-The rhts log and human summary sinks would only need STRUCT.
-Set default minimum test status severity for filtering to PASSED, so SKIPPED
-tests are omitted.
 
 Attach descriptions to external environment variables and add support for
 "--help-env" option, which prints them.
@@ -85,22 +63,17 @@ Think about making a vim syntax highlighting for main framework functions.
 
 Think about introducing assertion dependencies.
 
-Think about removing "_suite" from ep_suite(|_begin|_end|_init) again.  Ha!
-Seems like a nice idea!
-
 Think about making ep_abort_if_not arguments eval arguments.
 
 Think about introducing WAIVED and SKIPPED assertions with STRUCT BEGIN.
-
-Consider citing last line of output as assertion status reason on ep_log_mix
-stage, not on ep_log_cook.
 
 Consider replacing _ with - in executable names.
 
 Consider adding an ep_env executable producing a script setting the
 installation-dependent veriables.
 
-Reimplement ep_log_mix and ep_log_cook in Python to improve RHEL5.x and
-RHEL6.x compatibility.
-
 Add tracing support.
+
+Add "ep_log_cite" tool to the log pipe, right after "ep_log_mix". The tool
+should cite last output line as the possible failure reason in STRUCT END
+messages if there was none. Remove citing from "ep_log_cook".
