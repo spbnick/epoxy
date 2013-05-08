@@ -33,13 +33,13 @@ declare -a _EP_EXPORT_LIST=()
 function ep_export()
 {
     ep_arrstack_push _EP_EXPORT_LIST "$@"
+    # NOTE: using export instead of declare -x as a bash 3.x bug workaround
     export -- "$@"
 }
 
 # Protocol for suites (nothing, "generic", or "suite")
 ep_export EP_PROTOCOL
 
-# NOTE: using export instead of declare -x as a bash 3.x bug workaround
 # Glob pattern matching assertions to (not) include in the run
 ep_export EP_INCLUDE EP_DONT_INCLUDE
 # Glob pattern matching assertions to (not) remove disabled status from
