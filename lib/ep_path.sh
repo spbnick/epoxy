@@ -39,11 +39,11 @@ function ep_path_match_positive()
 
     # If it's a possible parent
     if ! $final &&
-       ep_glob_aborting --pattern-prefix "${!include_var}" "$path/" ||
+       ep_glob_aborting --pattern-prefix "$pattern" "$path/" ||
        # Or the exact node
-       ep_glob_aborting "${!include_var}" "$path" ||
+       ep_glob_aborting "$pattern" "$path" ||
        # Or a child
-       ep_glob_aborting --text-prefix "${!include_var}/" "$path"; then
+       ep_glob_aborting --text-prefix "$pattern/" "$path"; then
         return 0
     else
         return 1
