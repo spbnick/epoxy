@@ -81,7 +81,7 @@ function ep_arrstack_push()
     declare -r _stack="$1"
     shift
     while (( $# > 0 )); do
-        eval "$_stack[\${#$_stack[@]}]=\"\$1\""
+        eval "$_stack+=(\"\$1\")"
         shift
     done
 }
@@ -127,7 +127,7 @@ function ep_strstack_push()
         if [[ "$1" == *[$_sep[:cntrl:]]* ]]; then
             ep_abort "Invalid string-based stack value: $1"
         fi
-        eval "$_stack=\"\${$_stack}\${_sep}\${1}\"";
+        eval "$_stack+=\"\${_sep}\${1}\"";
         shift
     done
 }
