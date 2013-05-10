@@ -74,3 +74,7 @@ Add tracing support.
 Add "ep_log_cite" tool to the log pipe, right after "ep_log_mix". The tool
 should cite last output line as the possible failure reason in STRUCT END
 messages if there was none. Remove citing from "ep_log_cook".
+
+Consider reporting WAIVED tests with rlReport "..." WARN in ep_log_beakerlib.
+
+Think how to automate test independency test - running every test separately.
