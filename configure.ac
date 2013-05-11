@@ -19,5 +19,6 @@ AC_PREREQ(2.60)
 AC_INIT([epoxy], [1])
 AM_INIT_AUTOMAKE([1.10 -Wall foreign])
 AC_PROG_INSTALL
+AC_PROG_SED
 AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile tests/Makefile])
 AC_OUTPUT

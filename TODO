@@ -66,9 +66,6 @@ Think about introducing WAIVED and SKIPPED assertions with STRUCT BEGIN.
 
 Consider replacing _ with - in executable names.
 
-Consider adding an ep_env executable producing a script setting the
-installation-dependent veriables.
-
 Add tracing support.
 
 Add "ep_log_cite" tool to the log pipe, right after "ep_log_mix". The tool

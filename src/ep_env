@@ -1,0 +1,22 @@
+#!/bin/bash
+#
+# Output a Bash script setting installation-dependent environment variables
+# for Epoxy test framework
+#
+# Copyright (c) 2013 Red Hat, Inc. All rights reserved.
+#
+# This copyrighted material is made available to anyone wishing
+# to use, modify, copy, or redistribute it subject to the terms
+# and conditions of the GNU General Public License version 2.
+
+cat <<EOF
+if [ -z "\${_EP_ENV_SH+set}" ]; then
+declare _EP_ENV_SH=
+
+declare EP_LIB_DIR
+EP_LIB_DIR=`readlink -f \`dirname $0\`/../lib`  # Replaced on installation
+
+PATH="\$EP_LIB_DIR:\$PATH"
+
+fi #_EP_ENV_SH
+EOF
