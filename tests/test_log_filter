@@ -320,23 +320,13 @@ ep_suite_begin top_bottom; (
 
 ep_suite_begin status; (
     ep_suite_init
-    t waived_failed_out -sFAILED <<<"\
+    t waived_out -sFAILED <<<"\
         STRUCT BEGIN ''
         STRUCT BEGIN '/1'
         STRUCT END '/1' WAIVED
         STRUCT END '' WAIVED
         -"
-    t waived_failed_in -sWAIVED <<<"\
-        STRUCT BEGIN ''
-        STRUCT BEGIN '/1'
-        STRUCT END '/1' WAIVED
-        STRUCT END '' WAIVED
-        -
-        STRUCT BEGIN ''
-        STRUCT BEGIN '/1'
-        STRUCT END '/1' WAIVED
-        STRUCT END '' WAIVED"
-    t waived_passed -sWAIVED <<<"\
+    t waived_in -sWAIVED <<<"\
         STRUCT BEGIN ''
         STRUCT BEGIN '/1'
         STRUCT END '/1' WAIVED
