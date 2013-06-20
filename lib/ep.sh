@@ -634,6 +634,23 @@ function ep_test()
     ep_test_end
 }
 
+# Execute a command as a test subshell body.
+# Args: ep_test_begin_arg... [--] [command [arg...]]
+function ep_test_sh()
+{
+    declare -a param_array
+    declare -a extra_array
+    _ep_test_begin_parse_args param_array extra_array "$@"
+    _ep_test_begin_positional "${param_array[@]}"
+    (
+        ep_test_init
+        if [ ${#extra_array[@]} != 0 ]; then
+            "${extra_array[@]}"
+        fi
+    )
+    ep_test_end
+}
+
 # Parse ep_suite_begin arguments into a parameter array and an extra argument
 # array.
 # Args: _param_array _extra_array [ep_suite_begin_arg...]
@@ -830,6 +847,23 @@ function ep_suite()
             )
         fi
     fi
+    ep_suite_end
+}
+
+# Execute a command as a suite subshell body.
+# Args: ep_suite_begin_arg... [--] [command [arg...]]
+function ep_suite_sh()
+{
+    declare -a param_array
+    declare -a extra_array
+    _ep_suite_begin_parse_args param_array extra_array "$@"
+    _ep_suite_begin_positional "${param_array[@]}"
+    (
+        ep_suite_init
+        if [ ${#extra_array[@]} != 0 ]; then
+            "${extra_array[@]}"
+        fi
+    )
     ep_suite_end
 }
 
