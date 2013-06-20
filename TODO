@@ -75,3 +75,36 @@ messages if there was none. Remove citing from "ep_log_cook".
 Consider reporting WAIVED tests with rlReport "..." WARN in ep_log_beakerlib.
 
 Think how to automate test independency test - running every test separately.
+
+Investigate possibility of running each suite in its own process group.
+
+Consider adding a pair of functions to compliment ep_suite/ep_test, which
+would run the command in an initialized suite/test subshell.
+
+Consider making current STRUCT BEGIN/END - STRUCT ENTER/EXIT events and
+restoring STRUCT ENTER/EXIT events, so uncontrolled exit from the shell is
+handled properly, such as accessing undefined variables.
+
+Consider quoting function arguments in stack backtrace.
+
+Add "-r" option to "read" invocations where necessary.
+
+Fix filter output of STRUCT BEGIN for SKIPPED suites, refer to recursive suite
+passing suite argument in place of include pattern.
+
+Consider removing "nounset" from the default attribute set as not required.
+
+Use ep_env in tests.
+
+Consider adding support for longer assertion descriptions, provided via stdin
+to ep_(suite|test)(_begin)? Consider closing stdin by default so absent input
+could be detected. As a backup plan, consider adding an option which would
+signify there is a description on the input. As another backup plan, consider
+specifying longer description via additional option value.
+
+Consider tracing only the shell/file which invoked ep_(suite|test)_init.
+
+Consider outputting assertion's brief description alongside PASSED status in
+ep_log_cook.
+
+Consider hiding empty suites with default filter.
