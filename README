@@ -146,7 +146,7 @@ The most useful framework functions:
     ep_test_end     Conclude a test execution, used after a test subshell
 
     ep_teardown_push    Push a command to the suite teardown command stack
-    ep_teardown_push    Pop a command from the suite teardown command stack
+    ep_teardown_pop     Pop a command from the suite teardown command stack
 
 Look at ep.sh and other modules for slightly more detailed function
 descriptions and source code. Look at test suites under "tests" for more
