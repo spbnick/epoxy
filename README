@@ -3,8 +3,6 @@ a Bash testing framework
 
 Named after the stronger kind of glue.
 
-Design objectives: simplicity, flexibility and determinism.
-
 Development status: base functionality implemented, the framework is useful,
 many more features planned, bugs likely exist.
 
