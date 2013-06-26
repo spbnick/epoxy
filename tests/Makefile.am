@@ -16,7 +16,7 @@
 # Boston, MA 02110-1301, USA.
 
 TESTS = test_all
-TESTS_ENVIRONMENT = PATH="$(srcdir):$(top_srcdir)/src:$(top_srcdir)/lib:$$PATH"
+TESTS_ENVIRONMENT = PATH="$(srcdir):$(top_srcdir)/src:$$PATH"
 
 check_SCRIPTS = \
     test_all         \
