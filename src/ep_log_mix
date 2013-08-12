@@ -94,6 +94,6 @@ try:
     mix(sys.stdout, *sys.argv[1:])
 except OSError:
     # Output message only for OS errors
-    print sys.exc_info()[1]
+    sys.stderr.write(str(sys.exc_info()[1]) + "\n")
     sys.exit(1)
 sys.exit(0)
