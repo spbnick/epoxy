@@ -13,15 +13,15 @@ declare -r _EP_UTIL_SH=
 . thud_attrs.sh
 . thud_misc.sh
 
-# Abort execution if an assertion is invalid (a command fails).
-# Args: [command [arg...]]
+# Abort execution if an assertion is invalid.
+# Args: [eval_arg...]
 function ep_abort_if_not()
 {
     declare _status=
     thud_attrs_push +o errexit
     (
         thud_attrs_pop
-        "$@"
+        eval "$@"
     )
     _status=$?
     thud_attrs_pop

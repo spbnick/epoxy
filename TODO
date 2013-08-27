@@ -60,8 +60,6 @@ Think about making a vim syntax highlighting for main framework functions.
 
 Think about introducing assertion dependencies.
 
-Think about making ep_abort_if_not arguments eval arguments.
-
 Think about introducing WAIVED and SKIPPED assertions with STRUCT BEGIN.
 
 Consider replacing _ with - in executable names.

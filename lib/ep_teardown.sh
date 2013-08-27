@@ -31,7 +31,7 @@ function ep_teardown_push()
 function ep_teardown_pop()
 {
     declare num_commands="${1:-1}"
-    ep_abort_if_not [ "$num_commands" -le ${#_EP_TEARDOWN_ARGC[@]} ]
+    ep_abort_if_not '[ "$num_commands" -le ${#_EP_TEARDOWN_ARGC[@]} ]'
     for ((; num_commands > 0; num_commands--)); do
         thud_arr_pop _EP_TEARDOWN_ARGV \
                      `thud_arr_peek _EP_TEARDOWN_ARGC`
@@ -51,7 +51,7 @@ function ep_teardown_pop_all()
 function ep_teardown_exec()
 {
     declare num_commands="${1:-1}"
-    ep_abort_if_not [ "$num_commands" -le ${#_EP_TEARDOWN_ARGC[@]} ]
+    ep_abort_if_not '[ "$num_commands" -le ${#_EP_TEARDOWN_ARGC[@]} ]'
     for ((; num_commands > 0; num_commands--)); do
         "${_EP_TEARDOWN_ARGV[@]: -${_EP_TEARDOWN_ARGC[${#_EP_TEARDOWN_ARGC[@]}-1]}}"
         ep_teardown_pop
