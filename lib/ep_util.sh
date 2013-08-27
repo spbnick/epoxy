@@ -165,24 +165,6 @@ function ep_strstack_pop()
     done
 }
 
-# Set shell attributes using format of the SHELLOPTS variable
-# Args: shellopts
-function ep_attrs_set_shellopts()
-{
-    declare -r shellopts="$1"
-    declare -r normal_shellopts=":$shellopts:"
-    declare attr
-    declare state
-
-    while read -r attr state; do
-        if [[ "$normal_shellopts" == *:"$attr":* ]]; then
-            set -o $attr
-        else
-            set +o $attr
-        fi
-    done < <(set -o)
-}
-
 # Push shell attribute state to the state stack, optionally invoke "set".
 # Args: [set_arg...]
 function ep_attrs_push()
