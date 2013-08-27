@@ -16,6 +16,7 @@ declare -r _EP_SH=
 . ep_log.sh
 . ep_path.sh
 . ep_teardown.sh
+. thud_arr.sh
 . thud_str.sh
 . thud_attrs.sh
 . thud_misc.sh
@@ -35,7 +36,7 @@ declare -a _EP_EXPORT_LIST=()
 # Args: [_name...]
 function ep_export()
 {
-    ep_arrstack_push _EP_EXPORT_LIST "$@"
+    thud_arr_push _EP_EXPORT_LIST "$@"
     # NOTE: using export instead of declare -x as a bash 3.x bug workaround
     export -- "$@"
 }

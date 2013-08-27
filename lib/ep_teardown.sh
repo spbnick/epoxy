@@ -10,6 +10,7 @@
 if [ -z ${_EP_TEARDOWN_SH+set} ]; then
 declare -r _EP_TEARDOWN_SH=
 
+. thud_arr.sh
 . ep_util.sh
 
 # Teardown command argc array
@@ -21,8 +22,8 @@ declare -a _EP_TEARDOWN_ARGV=()
 # Args: ...
 function ep_teardown_push()
 {
-    ep_arrstack_push _EP_TEARDOWN_ARGC $#
-    ep_arrstack_push _EP_TEARDOWN_ARGV "$@"
+    thud_arr_push _EP_TEARDOWN_ARGC $#
+    thud_arr_push _EP_TEARDOWN_ARGV "$@"
 }
 
 # Pop commands from the teardown command stack.
@@ -32,9 +33,9 @@ function ep_teardown_pop()
     declare num_commands="${1:-1}"
     ep_abort_if_not [ "$num_commands" -le ${#_EP_TEARDOWN_ARGC[@]} ]
     for ((; num_commands > 0; num_commands--)); do
-        ep_arrstack_pop _EP_TEARDOWN_ARGV \
-                        `ep_arrstack_peek _EP_TEARDOWN_ARGC`
-        ep_arrstack_pop _EP_TEARDOWN_ARGC
+        thud_arr_pop _EP_TEARDOWN_ARGV \
+                     `thud_arr_peek _EP_TEARDOWN_ARGC`
+        thud_arr_pop _EP_TEARDOWN_ARGC
     done
 }
 

@@ -73,49 +73,6 @@ function ep_abort_if_not()
     fi
 }
 
-# Push values to an array-based stack.
-# Args: stack value...
-function ep_arrstack_push()
-{
-    declare -r _stack="$1"
-    shift
-    while (( $# > 0 )); do
-        eval "$_stack+=(\"\$1\")"
-        shift
-    done
-}
-
-# Get a value from the top of an array-based stack.
-# Args: stack
-function ep_arrstack_peek()
-{
-    declare -r _stack="$1"
-    if eval "test \${#$_stack[@]} -eq 0"; then
-        ep_abort "Not enough values in an array-based stack"
-    fi
-    eval "echo \"\${$_stack[\${#$_stack[@]}-1]}\""
-}
-
-# Pop values from an array-based stack.
-# Args: stack [num_values]
-function ep_arrstack_pop()
-{
-    declare -r _stack="$1"
-    declare _num_values="${2:-1}"
-
-    if [[ "$_num_values" == *[^0-9]* ]]; then
-        ep_abort "Invalid number of values: $_num_values"
-    fi
-
-    while (( _num_values > 0 )); do
-        if eval "test \${#$_stack[@]} -eq 0"; then
-            ep_abort "Not enough values in an array-based stack"
-        fi
-        eval "unset $_stack[\${#$_stack[@]}-1]"
-        _num_values=$((_num_values-1))
-    done
-}
-
 # Make sure getopt compatibility isn't enforced
 unset GETOPT_COMPATIBLE
 # Check if getopt is enhanced and supports quoting
