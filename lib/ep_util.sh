@@ -10,8 +10,7 @@
 if [ -z ${_EP_UTIL_SH+set} ]; then
 declare -r _EP_UTIL_SH=
 
-# Shell attribute state stack
-declare -a _EP_ATTR_STACK=()
+. thud_attrs.sh
 
 # The PID ep_abort should send SIGABRT to, or empty, meaning $$.
 declare EP_ABORT_PID=
@@ -61,13 +60,13 @@ function ep_abort()
 function ep_abort_if_not()
 {
     declare _status=
-    ep_attrs_push +o errexit
+    thud_attrs_push +o errexit
     (
-        ep_attrs_pop
+        thud_attrs_pop
         "$@"
     )
     _status=$?
-    ep_attrs_pop
+    thud_attrs_pop
     if [ $_status != 0 ]; then
         declare -r _loc="${BASH_SOURCE[1]}: line ${BASH_LINENO[0]}"
         ep_abort "$_loc: Assertion failed: $@"
@@ -163,29 +162,6 @@ function ep_strstack_pop()
         eval "$_stack=\"\${$_stack%$_sep*}\""
         _num_values=$((_num_values-1))
     done
-}
-
-# Push shell attribute state to the state stack, optionally invoke "set".
-# Args: [set_arg...]
-function ep_attrs_push()
-{
-    # Using process substitution instead of command substitution,
-    # because the latter resets errexit.
-    declare opts
-    if read -rd '' opts < <(set +o); [ $? != 1 ]; then
-        ep_abort Failed to read attrs
-    fi
-    ep_arrstack_push _EP_ATTR_STACK "$opts"
-    if [ $# != 0 ]; then
-        set "$@"
-    fi
-}
-
-# Pop shell attribute state from the state stack.
-function ep_attrs_pop()
-{
-    eval "`ep_arrstack_peek _EP_ATTR_STACK`"
-    ep_arrstack_pop _EP_ATTR_STACK
 }
 
 # Make sure getopt compatibility isn't enforced

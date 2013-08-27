@@ -16,6 +16,7 @@ declare -r _EP_SH=
 . ep_log.sh
 . ep_path.sh
 . ep_teardown.sh
+. thud_attrs.sh
 . thud_misc.sh
 
 # First FD reserved for the user
@@ -542,7 +543,7 @@ function _ep_test_begin_positional()
     _ep_log_msg "STRUCT BEGIN '$_EP_NAME_STACK'${brief:+ $brief}"
 
     # Disable errexit so a failed command doesn't exit this shell
-    ep_attrs_push +o errexit
+    thud_attrs_push +o errexit
 }
 
 # Setup a test execution.
@@ -576,7 +577,7 @@ function ep_test_end()
     declare status=$?
     declare msg
     # Restore errexit state
-    ep_attrs_pop
+    thud_attrs_pop
 
     ep_abort_if_not [ ${_EP_EXPECTED_STATUS+set} ]
     if [ $status == "$_EP_EXPECTED_STATUS" ]; then
@@ -765,7 +766,7 @@ function _ep_suite_begin_positional()
     _ep_log_msg "STRUCT BEGIN '$_EP_NAME_STACK'${brief:+ $brief}"
 
     # Disable errexit so a failed command doesn't exit this shell
-    ep_attrs_push +o errexit
+    thud_attrs_push +o errexit
 }
 
 # Setup a suite execution.
@@ -798,7 +799,7 @@ function ep_suite_end()
     declare status=$?
     declare msg
     # Restore errexit state
-    ep_attrs_pop
+    thud_attrs_pop
 
     ep_abort_if_not [ ${_EP_WAIVED+set} ]
     if $_EP_WAIVED &&
@@ -876,13 +877,13 @@ function _ep_trap_exit()
     declare teardown_status=
 
     # Execute teardown in a subshell
-    ep_attrs_push +o errexit
+    thud_attrs_push +o errexit
     (
-        ep_attrs_pop
+        thud_attrs_pop
         ep_teardown_exec_all
     )
     teardown_status=$?
-    ep_attrs_pop
+    thud_attrs_pop
 
     # If teardown failed
     if [ $teardown_status != 0 ]; then
