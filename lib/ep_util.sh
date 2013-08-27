@@ -116,54 +116,6 @@ function ep_arrstack_pop()
     done
 }
 
-# Push values to a string-based stack.
-# Args: _stack _sep _value...
-function ep_strstack_push()
-{
-    declare -r _stack="$1"; shift
-    declare -r _sep="$1"; shift
-    while (( $# > 0 )); do
-        if [[ "$1" == *[$_sep[:cntrl:]]* ]]; then
-            ep_abort "Invalid string-based stack value: $1"
-        fi
-        eval "$_stack+=\"\${_sep}\${1}\"";
-        shift
-    done
-}
-
-# Get a value from the top of a string-based stack.
-# Args: _stack _sep
-function ep_strstack_peek()
-{
-    declare -r _stack="$1"
-    declare -r _sep="$2"
-    if eval "test -z \"\$$_stack\""; then
-        ep_abort "Not enough values in a string-based stack"
-    fi
-    eval "echo \"\${$_stack##*$_sep}\""
-}
-
-# Pop values from a string-based stack.
-# Args: _stack _sep [_num_values]
-function ep_strstack_pop()
-{
-    declare -r _stack="$1"
-    declare -r _sep="$2"
-    declare _num_values="${3:-1}"
-
-    if [[ "$_num_values" == *[^0-9]* ]]; then
-        ep_abort "Invalid number of values: $_num_values"
-    fi
-
-    while (( _num_values > 0 )); do
-        if eval "test -z \"\$$_stack\""; then
-            ep_abort "Not enough values in a string-based stack"
-        fi
-        eval "$_stack=\"\${$_stack%$_sep*}\""
-        _num_values=$((_num_values-1))
-    done
-}
-
 # Make sure getopt compatibility isn't enforced
 unset GETOPT_COMPATIBLE
 # Check if getopt is enhanced and supports quoting

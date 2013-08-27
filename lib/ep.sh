@@ -16,6 +16,7 @@ declare -r _EP_SH=
 . ep_log.sh
 . ep_path.sh
 . ep_teardown.sh
+. thud_str.sh
 . thud_attrs.sh
 . thud_misc.sh
 
@@ -510,7 +511,7 @@ function _ep_test_begin_positional()
     declare failure="$1";           shift
 
     # "Enter" the assertion
-    ep_strstack_push _EP_NAME_STACK / "$name"
+    thud_str_push _EP_NAME_STACK / "$name"
 
     # Disable skipping if the path matches "ENABLE" filter
     if ep_path_filter "$_EP_NAME_STACK" true ENABLE false; then
@@ -610,7 +611,7 @@ function ep_test_end()
     _ep_log_msg "$msg"
 
     # "Exit" the assertion
-    ep_strstack_pop _EP_NAME_STACK /
+    thud_str_pop _EP_NAME_STACK /
     _ep_register_status $status
     if [ $status -ge $EP_STATUS_PANICKED ]; then
         _ep_fini $status
@@ -736,7 +737,7 @@ function _ep_suite_begin_positional()
     declare failure="$1";           shift
 
     # "Enter" the assertion
-    ep_strstack_push _EP_NAME_STACK / "$name"
+    thud_str_push _EP_NAME_STACK / "$name"
 
     # Disable skipping if path matches "ENABLE" filter
     if ep_path_filter "$_EP_NAME_STACK" false ENABLE false; then
@@ -824,7 +825,7 @@ function ep_suite_end()
     _ep_log_msg "$msg"
 
     # "Exit" the assertion
-    ep_strstack_pop _EP_NAME_STACK /
+    thud_str_pop _EP_NAME_STACK /
     _ep_register_status $status
     if [ $status -ge $EP_STATUS_PANICKED ]; then
         _ep_fini $status
