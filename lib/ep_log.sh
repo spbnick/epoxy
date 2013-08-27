@@ -10,6 +10,8 @@
 if [ -z ${_EP_LOG_SH+set} ]; then
 declare -r _EP_LOG_SH=
 
+. thud_misc.sh
+
 # Original stdout FD
 declare -r _EP_LOG_STDOUT_FD=5
 # Original stderr FD
@@ -34,9 +36,9 @@ function _ep_log_init()
     declare -r filter_opts="$1"; shift
     declare -r cook="$1"; shift
 
-    ep_abort_if_not 'thud_is_bool "$filter"'
-    ep_abort_if_not 'thud_is_bool "$cook"'
-    ep_abort_if_not 'test -d "$EP_TMPDIR"'
+    thud_assert 'thud_is_bool "$filter"'
+    thud_assert 'thud_is_bool "$cook"'
+    thud_assert 'test -d "$EP_TMPDIR"'
 
     declare -r output_fifo="$EP_TMPDIR/output.fifo"
     declare -r messages_fifo="$EP_TMPDIR/messages.fifo"

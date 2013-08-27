@@ -119,7 +119,7 @@ function _ep_shell_init()
         read -r THUD_ABORT_PID discard < /proc/self/stat
     fi
 
-    ep_abort_if_not 'thud_is_bool "${_EP_SKIPPED-false}"'
+    thud_assert 'thud_is_bool "${_EP_SKIPPED-false}"'
 
     # If entering a skipped assertion shell
     if ${_EP_SKIPPED:-false}; then
@@ -293,7 +293,7 @@ function ep_suite_init()
     fi
 
     # Setup logging, if not done yet
-    ep_abort_if_not 'thud_is_bool "${_EP_LOG_SETUP-false}"'
+    thud_assert 'thud_is_bool "${_EP_LOG_SETUP-false}"'
     if ! ${_EP_LOG_SETUP-false}; then
         _ep_log_init "$log_file" "$log_filter" "$log_filter_opts" "$log_cook"
         _EP_LOG_SETUP=true
@@ -329,7 +329,7 @@ function ep_test_init()
 function _ep_fini()
 {
     declare status="$1"
-    ep_abort_if_not 'ep_status_is_valid "$status"'
+    thud_assert 'ep_status_is_valid "$status"'
 
     trap - EXIT
 
@@ -430,7 +430,7 @@ function _ep_test_begin_parse_args()
         thud_abort "Assertion name is not specified"
     fi
     declare _name="$1";             shift
-    ep_abort_if_not 'ep_name_is_valid "$_name"'
+    thud_assert 'ep_name_is_valid "$_name"'
 
     declare _skipped=false
     declare _waived=false
@@ -581,7 +581,7 @@ function ep_test_end()
     # Restore errexit state
     thud_attrs_pop
 
-    ep_abort_if_not '[ ${_EP_EXPECTED_STATUS+set} ]'
+    thud_assert '[ ${_EP_EXPECTED_STATUS+set} ]'
     if [ $status == "$_EP_EXPECTED_STATUS" ]; then
         status=$EP_STATUS_PASSED
     else
@@ -589,20 +589,20 @@ function ep_test_end()
     fi
     unset _EP_EXPECTED_STATUS
 
-    ep_abort_if_not '[ ${_EP_WAIVED+set} ]'
+    thud_assert '[ ${_EP_WAIVED+set} ]'
     if $_EP_WAIVED &&
         (($status >= $EP_STATUS_PASSED && $status <= $EP_STATUS_FAILED)); then
         status=$EP_STATUS_WAIVED
     fi
     _EP_WAIVED=false
 
-    ep_abort_if_not '[ ${_EP_SKIPPED+set} ]'
+    thud_assert '[ ${_EP_SKIPPED+set} ]'
     if $_EP_SKIPPED; then
         status=$EP_STATUS_SKIPPED
     fi
     _EP_SKIPPED=false
 
-    ep_abort_if_not 'ep_status_is_valid $status'
+    thud_assert 'ep_status_is_valid $status'
     msg="STRUCT END   '$_EP_NAME_STACK' `ep_status_to_str $status`"
     if [ $status == $EP_STATUS_WAIVED ] ||
        [ $status == $EP_STATUS_FAILED ]; then
@@ -667,7 +667,7 @@ function _ep_suite_begin_parse_args()
         thud_abort "Assertion name is not specified"
     fi
     declare _name="$1";             shift
-    ep_abort_if_not 'ep_name_is_valid "$_name"'
+    thud_assert 'ep_name_is_valid "$_name"'
 
     declare _skipped=false
     declare _waived=false
@@ -803,20 +803,20 @@ function ep_suite_end()
     # Restore errexit state
     thud_attrs_pop
 
-    ep_abort_if_not '[ ${_EP_WAIVED+set} ]'
+    thud_assert '[ ${_EP_WAIVED+set} ]'
     if $_EP_WAIVED &&
         (($status >= $EP_STATUS_PASSED && $status <= $EP_STATUS_FAILED)); then
         status=$EP_STATUS_WAIVED
     fi
     _EP_WAIVED=false
 
-    ep_abort_if_not '[ ${_EP_SKIPPED+set} ]'
+    thud_assert '[ ${_EP_SKIPPED+set} ]'
     if $_EP_SKIPPED; then
         status=$EP_STATUS_SKIPPED
     fi
     _EP_SKIPPED=false
 
-    ep_abort_if_not 'ep_status_is_valid $status'
+    thud_assert 'ep_status_is_valid $status'
     msg="STRUCT END   '$_EP_NAME_STACK' `ep_status_to_str $status`"
     if [ $status == $EP_STATUS_WAIVED ] ||
        [ $status == $EP_STATUS_FAILED ]; then

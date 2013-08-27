@@ -10,27 +10,6 @@
 if [ -z ${_EP_UTIL_SH+set} ]; then
 declare -r _EP_UTIL_SH=
 
-. thud_attrs.sh
-. thud_misc.sh
-
-# Abort execution if an assertion is invalid.
-# Args: [eval_arg...]
-function ep_abort_if_not()
-{
-    declare _status=
-    thud_attrs_push +o errexit
-    (
-        thud_attrs_pop
-        eval "$@"
-    )
-    _status=$?
-    thud_attrs_pop
-    if [ $_status != 0 ]; then
-        declare -r _loc="${BASH_SOURCE[1]}: line ${BASH_LINENO[0]}"
-        thud_abort "$_loc: Assertion failed: $@"
-    fi
-}
-
 # Make sure getopt compatibility isn't enforced
 unset GETOPT_COMPATIBLE
 # Check if getopt is enhanced and supports quoting
