@@ -35,7 +35,7 @@ function ep_abort_if_not()
 unset GETOPT_COMPATIBLE
 # Check if getopt is enhanced and supports quoting
 if getopt --test >/dev/null; [ $? != 4 ]; then
-    ep_abort_if_not Enhanced getopt not found
+    thud_abort "Enhanced getopt not found"
 fi
 
 fi # _EP_UTIL_SH
