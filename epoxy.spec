@@ -10,6 +10,7 @@ Source:     %{name}-%{version}.tar.gz
 Requires:   bash
 Requires:   lua
 Requires:   python
+Requires:   thud
 
 %description
 
