@@ -108,3 +108,7 @@ Consider outputting assertion's brief description alongside PASSED status in
 ep_log_cook.
 
 Consider hiding empty suites with default filter.
+
+Consider adding support for an environment variable containing executable's
+command line options, properly escaped to allow use in "eval". Consider
+replacing EP_PROTOCOL and EP(_DONT)?_(INCLUDE|ENABLE|CLAIM) with that.
