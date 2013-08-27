@@ -34,8 +34,8 @@ function _ep_log_init()
     declare -r filter_opts="$1"; shift
     declare -r cook="$1"; shift
 
-    ep_abort_if_not ep_bool_is_valid "$filter"
-    ep_abort_if_not ep_bool_is_valid "$cook"
+    ep_abort_if_not thud_is_bool "$filter"
+    ep_abort_if_not thud_is_bool "$cook"
     ep_abort_if_not test -d "$EP_TMPDIR"
 
     declare -r output_fifo="$EP_TMPDIR/output.fifo"

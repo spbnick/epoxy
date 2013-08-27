@@ -206,14 +206,6 @@ function ep_attrs_pop()
     ep_arrstack_pop _EP_ATTR_STACK
 }
 
-# Check if a boolean value is valid
-# Args: value
-function ep_bool_is_valid()
-{
-    ep_abort_if_not [ ${1+set} ]
-    [ "$1" == "true" ] || [ "$1" == "false" ]
-}
-
 # Make sure getopt compatibility isn't enforced
 unset GETOPT_COMPATIBLE
 # Check if getopt is enhanced and supports quoting

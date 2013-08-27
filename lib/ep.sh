@@ -16,6 +16,7 @@ declare -r _EP_SH=
 . ep_log.sh
 . ep_path.sh
 . ep_teardown.sh
+. thud_misc.sh
 
 # First FD reserved for the user
 declare -r EP_USER_FD1=3
@@ -115,7 +116,7 @@ function _ep_shell_init()
         read -r EP_ABORT_PID discard < /proc/self/stat
     fi
 
-    ep_abort_if_not ep_bool_is_valid "${_EP_SKIPPED-false}"
+    ep_abort_if_not thud_is_bool "${_EP_SKIPPED-false}"
 
     # If entering a skipped assertion shell
     if ${_EP_SKIPPED:-false}; then
@@ -289,7 +290,7 @@ function ep_suite_init()
     fi
 
     # Setup logging, if not done yet
-    ep_abort_if_not ep_bool_is_valid "${_EP_LOG_SETUP-false}"
+    ep_abort_if_not thud_is_bool "${_EP_LOG_SETUP-false}"
     if ! ${_EP_LOG_SETUP-false}; then
         _ep_log_init "$log_file" "$log_filter" "$log_filter_opts" "$log_cook"
         _EP_LOG_SETUP=true
