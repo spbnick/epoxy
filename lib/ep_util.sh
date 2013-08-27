@@ -15,28 +15,6 @@ declare -r _EP_UTIL_SH=
 # The PID ep_abort should send SIGABRT to, or empty, meaning $$.
 declare EP_ABORT_PID=
 
-# Output a backtrace
-# Args: [start_frame]
-function ep_backtrace()
-{
-    declare start_frame=${1:-0}
-    declare frame
-    declare argv=0
-    declare argc
-
-    for ((frame = 0; frame < ${#BASH_LINENO[@]} - 1; frame++)); do
-        if ((frame > start_frame)); then
-            echo -n "${BASH_SOURCE[frame+1]}:${BASH_LINENO[frame]}:" \
-                    "${FUNCNAME[frame]}"
-            for ((argc = ${BASH_ARGC[frame]}; argc > 0; argc--)); do
-                echo -n " ${BASH_ARGV[argv + argc - 1]}"
-            done
-            echo
-        fi
-        argv=$((argv + BASH_ARGC[frame]))
-    done
-}
-
 # Abort execution by sending SIGABRT to EP_ABORT_PID, or to $$ if not set,
 # optionally outputting a message.
 # Args: [message...]

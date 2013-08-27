@@ -916,7 +916,7 @@ function _ep_trap_exit()
 function _ep_trap_sigabrt()
 {
     trap - SIGABRT
-    ep_backtrace 1 >&2
+    thud_backtrace >&2
     _ep_fini $EP_STATUS_ABORTED
 }
 
