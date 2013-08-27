@@ -10,7 +10,6 @@
 if [ -z ${_EP_STATUS_SH+set} ]; then
 declare -r _EP_STATUS_SH=
 
-. ep_util.sh
 . thud_misc.sh
 
 #

@@ -21,6 +21,5 @@ dist_pkgdata_DATA = \
     ep_log.sh       \
     ep_path.sh      \
     ep_status.sh    \
-    ep_teardown.sh  \
-    ep_util.sh
+    ep_teardown.sh
 

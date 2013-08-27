@@ -10,7 +10,6 @@
 if [ -z ${_EP_SH+set} ]; then
 declare -r _EP_SH=
 
-. ep_util.sh
 . ep_status.sh
 . ep_glob.sh
 . ep_log.sh
@@ -102,6 +101,13 @@ function _ep_shell_init()
     # Enable extended debugging.
     # Needed for DEBUG trap propagation and BASH_ARGV/BASH_ARGC.
     shopt -s extdebug
+
+    # Make sure getopt compatibility isn't enforced
+    unset GETOPT_COMPATIBLE
+    # Check if getopt is enhanced and supports quoting
+    if getopt --test >/dev/null; [ $? != 4 ]; then
+        thud_abort "Enhanced getopt not found"
+    fi
 
     if [ "$BASH_SUBSHELL" == "${_EP_SHELL_INIT_SUBSHELL:-}" ]; then
         thud_abort "Re-initializing a (sub)shell"

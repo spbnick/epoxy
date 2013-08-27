@@ -12,7 +12,6 @@ declare -r _EP_TEARDOWN_SH=
 
 . thud_arr.sh
 . thud_misc.sh
-. ep_util.sh
 
 # Teardown command argc array
 declare -a _EP_TEARDOWN_ARGC=()
