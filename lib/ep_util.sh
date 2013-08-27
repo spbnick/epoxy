@@ -11,27 +11,7 @@ if [ -z ${_EP_UTIL_SH+set} ]; then
 declare -r _EP_UTIL_SH=
 
 . thud_attrs.sh
-
-# The PID ep_abort should send SIGABRT to, or empty, meaning $$.
-declare EP_ABORT_PID=
-
-# Abort execution by sending SIGABRT to EP_ABORT_PID, or to $$ if not set,
-# optionally outputting a message.
-# Args: [message...]
-function ep_abort()
-{
-    declare pid=
-
-    if [ -n "${EP_ABORT_PID:+set}" ]; then
-        pid="$EP_ABORT_PID"
-    else
-        pid="$$"
-    fi
-    if [ $# != 0 ]; then
-        echo "$@" >&2
-    fi
-    kill -s SIGABRT "$pid"
-}
+. thud_misc.sh
 
 # Abort execution if an assertion is invalid (a command fails).
 # Args: [command [arg...]]
@@ -47,7 +27,7 @@ function ep_abort_if_not()
     thud_attrs_pop
     if [ $_status != 0 ]; then
         declare -r _loc="${BASH_SOURCE[1]}: line ${BASH_LINENO[0]}"
-        ep_abort "$_loc: Assertion failed: $@"
+        thud_abort "$_loc: Assertion failed: $@"
     fi
 }
 

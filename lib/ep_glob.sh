@@ -10,6 +10,8 @@
 if [ -z ${_EP_GLOB_SH+set} ]; then
 declare -r _EP_GLOB_SH=
 
+. thud_misc.sh
+
 # Match a text against an extend glob-like pattern, abort if an error occurs.
 # Args: [ep_glob_command_option...] [--] pattern text
 function ep_glob_aborting()
@@ -18,7 +20,7 @@ function ep_glob_aborting()
     declare stderr
     stderr=`ep_glob "\$@" 2>&1` || status=$?
     if [ "$status" != 0 ] && [ "$status" != 1 ]; then
-        ep_abort "$stderr"
+        thud_abort "$stderr"
     fi
     return $status
 }

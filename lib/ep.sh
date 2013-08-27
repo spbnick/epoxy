@@ -104,19 +104,19 @@ function _ep_shell_init()
     shopt -s extdebug
 
     if [ "$BASH_SUBSHELL" == "${_EP_SHELL_INIT_SUBSHELL:-}" ]; then
-        ep_abort "Re-initializing a (sub)shell"
+        thud_abort "Re-initializing a (sub)shell"
     fi
 
     # Last initialized subshell depth
     _EP_SHELL_INIT_SUBSHELL="$BASH_SUBSHELL"
 
-    # Set PID that ep_abort should send SIGABRT to - the PID of the (sub)shell
-    # being initialized, if can be retrieved
+    # Set PID that thud_abort should send SIGABRT to - the PID of the
+    # (sub)shell being initialized, if can be retrieved
     if [ -n "${BASHPID+set}" ]; then
-        EP_ABORT_PID="$BASHPID"
+        THUD_ABORT_PID="$BASHPID"
     elif [ -r /proc/self/stat ]; then
         declare discard
-        read -r EP_ABORT_PID discard < /proc/self/stat
+        read -r THUD_ABORT_PID discard < /proc/self/stat
     fi
 
     ep_abort_if_not thud_is_bool "${_EP_SKIPPED-false}"
@@ -234,7 +234,7 @@ function ep_suite_init()
                 -r|--raw)
                     log_cook=false;                         shift;;
                 --) shift; break;;
-                *) ep_abort "Unknown option: $1";;
+                *) thud_abort "Unknown option: $1";;
             esac
         done
 
@@ -427,7 +427,7 @@ function _ep_test_begin_parse_args()
     declare -r _extra_array="$1";   shift
 
     if [ $# == 0 ]; then
-        ep_abort "Assertion name is not specified"
+        thud_abort "Assertion name is not specified"
     fi
     declare _name="$1";             shift
     ep_abort_if_not ep_name_is_valid "$_name"
@@ -460,20 +460,20 @@ function _ep_test_begin_parse_args()
                 _expected_status="$2";
                 if [[ "$_expected_status" == "" ||
                       "$_expected_status" == *[^" "0-9]* ]]; then
-                    ep_abort "Invalid -e/--expected-status option value: $2"
+                    thud_abort "Invalid -e/--expected-status option value: $2"
                 fi
                 shift 2
                 ;;
             -b|--brief)
                 if ! ep_text_is_valid "$2"; then
-                    ep_abort "Invalid -b/--brief option value: $2"
+                    thud_abort "Invalid -b/--brief option value: $2"
                 fi
                 _brief="$2"
                 shift 2
                 ;;
             -f|--failure)
                 if ! ep_text_is_valid "$2"; then
-                    ep_abort "Invalid -f/--failure option value: $2"
+                    thud_abort "Invalid -f/--failure option value: $2"
                 fi
                 _failure="$2"
                 shift 2
@@ -483,7 +483,7 @@ function _ep_test_begin_parse_args()
                 break
                 ;;
             *)
-                ep_abort "Unknown option: $1"
+                thud_abort "Unknown option: $1"
                 ;;
         esac
     done
@@ -567,7 +567,7 @@ function ep_test_begin()
     declare -a extra_array
     _ep_test_begin_parse_args param_array extra_array "$@"
     if [ ${#extra_array[@]} != 0 ]; then
-        ep_abort "Invalid number of positional arguments"
+        thud_abort "Invalid number of positional arguments"
     fi
     _ep_test_begin_positional "${param_array[@]}"
 }
@@ -664,7 +664,7 @@ function _ep_suite_begin_parse_args()
     declare -r _extra_array="$1";   shift
 
     if [ $# == 0 ]; then
-        ep_abort "Assertion name is not specified"
+        thud_abort "Assertion name is not specified"
     fi
     declare _name="$1";             shift
     ep_abort_if_not ep_name_is_valid "$_name"
@@ -694,14 +694,14 @@ function _ep_suite_begin_parse_args()
                 ;;
             -b|--brief)
                 if ! ep_text_is_valid "$2"; then
-                    ep_abort "Invalid -b/--brief option value: $2"
+                    thud_abort "Invalid -b/--brief option value: $2"
                 fi
                 _brief="$2"
                 shift 2
                 ;;
             -f|--failure)
                 if ! ep_text_is_valid "$2"; then
-                    ep_abort "Invalid -f/--failure option value: $2"
+                    thud_abort "Invalid -f/--failure option value: $2"
                 fi
                 _failure="$2"
                 shift 2
@@ -711,7 +711,7 @@ function _ep_suite_begin_parse_args()
                 break
                 ;;
             *)
-                ep_abort "Unknown option: $1"
+                thud_abort "Unknown option: $1"
                 ;;
         esac
     done
@@ -789,7 +789,7 @@ function ep_suite_begin()
     declare -a extra_array
     _ep_suite_begin_parse_args param_array extra_array "$@"
     if [ ${#extra_array[@]} != 0 ]; then
-        ep_abort "Invalid number of positional arguments"
+        thud_abort "Invalid number of positional arguments"
     fi
     _ep_suite_begin_positional "${param_array[@]}"
 }
@@ -916,7 +916,6 @@ function _ep_trap_exit()
 function _ep_trap_sigabrt()
 {
     trap - SIGABRT
-    thud_backtrace >&2
     _ep_fini $EP_STATUS_ABORTED
 }
 

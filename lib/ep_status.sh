@@ -11,6 +11,7 @@ if [ -z ${_EP_STATUS_SH+set} ]; then
 declare -r _EP_STATUS_SH=
 
 . ep_util.sh
+. thud_misc.sh
 
 #
 # Status codes
@@ -56,7 +57,7 @@ function ep_status_to_str()
         $EP_STATUS_ERRORED)     echo ERRORED;;
         $EP_STATUS_PANICKED)    echo PANICKED;;
         $EP_STATUS_ABORTED)     echo ABORTED;;
-        *) ep_abort "Invalid status code: $status";;
+        *) thud_abort "Invalid status code: $status";;
     esac
 }
 

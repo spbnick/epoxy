@@ -10,6 +10,7 @@
 
 eval "`ep_env || echo exit 1`"
 . ep.sh
+. thud_misc.sh
 ep_suite_init "$@"
 
 # Test an exit status assertion
@@ -175,7 +176,7 @@ ep_suite_begin suite; (
             declare -r script_failed="ep_test 1 false"
             declare -r script_errored="false"
             declare -r script_panicked="ep_teardown_push false"
-            declare -r script_aborted="ep_abort"
+            declare -r script_aborted="thud_abort"
 
             while read mask opts script status; do
                 script_var="script_$script"
