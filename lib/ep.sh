@@ -116,14 +116,10 @@ function _ep_shell_init()
     # Last initialized subshell depth
     _EP_SHELL_INIT_SUBSHELL="$BASH_SUBSHELL"
 
-    # Set PID that thud_abort should send SIGABRT to - the PID of the
-    # (sub)shell being initialized, if can be retrieved
-    if [ -n "${BASHPID+set}" ]; then
-        THUD_ABORT_PID="$BASHPID"
-    elif [ -r /proc/self/stat ]; then
-        declare discard
-        read -r THUD_ABORT_PID discard < /proc/self/stat
-    fi
+    # Set THUD_ABORT_PID to the current (sub)shell PID, so that
+    # thud_abort_frame sends SIGABRT not only to the shell invoking it, but
+    # also to its parents up to this shell
+    thud_get_pid THUD_ABORT_PID
 
     thud_assert 'thud_is_bool "${_EP_SKIPPED-false}"'
 
