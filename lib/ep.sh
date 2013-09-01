@@ -19,6 +19,7 @@ declare -r _EP_SH=
 . thud_str.sh
 . thud_attrs.sh
 . thud_misc.sh
+. thud_strict.sh
 
 # First FD reserved for the user
 declare -r EP_USER_FD1=3
@@ -92,12 +93,8 @@ declare _EP_COUNT_ABORTED
 # Initialize a (sub)shell.
 function _ep_shell_init()
 {
-    # Exit immediately, if a simple command exits with non-zero status
-    set -o errexit
-    # Pipe status is the status of the rightmost unsuccessful command
-    set -o pipefail
-    # Abort if expanding an unset variable
-    set -o nounset
+    # Enable various shell attributes and options to improve error checking
+    thud_strict_on
     # Enable extended debugging.
     # Needed for DEBUG trap propagation and BASH_ARGV/BASH_ARGC.
     shopt -s extdebug
