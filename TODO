@@ -110,3 +110,8 @@ Consider hiding empty suites with default filter.
 Consider adding support for an environment variable containing executable's
 command line options, properly escaped to allow use in "eval". Consider
 replacing EP_PROTOCOL and EP(_DONT)?_(INCLUDE|ENABLE|CLAIM) with that.
+
+Consider adding support for setup/teardown assertions. A setup assertion
+causes the containing suite to ERROR if it fails, a teardown assertion causes
+the containing suite to PANIC if it fails. A teardown assertion can be pushed
+to teardown stack and executed later.
