@@ -8,7 +8,7 @@
 -- to use, modify, copy, or redistribute it subject to the terms
 -- and conditions of the GNU General Public License version 2.
 
---- TTY output flag - try if stdout is connected to a terminal
+--- TTY output flag - true if stdout is connected to a terminal
 local ISATTY = os.execute("test -t 1") == 0
 
 --- Status code -> name map
