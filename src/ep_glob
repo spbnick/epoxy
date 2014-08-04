@@ -36,7 +36,7 @@ Options:
 end
 
 ---
--- Parce a brackets expression part of a pattern into a character set.
+-- Parse a brackets expression part of a pattern into a character set.
 --
 -- @param brackets  Pattern part at the beginning of the brackets expression
 --                  contents.
@@ -99,7 +99,7 @@ function parse_brackets(brackets)
 end
 
 ---
--- Parce a pattern set parentheses expression part of a pattern into a
+-- Parse a pattern set parentheses expression part of a pattern into a
 -- pattern set.
 --
 -- @param parens    Pattern part at the beginning of the parentheses
