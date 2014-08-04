@@ -9,3 +9,5 @@ install-sh
 missing
 test-driver
 *.tar.gz
+*.log
+*.trs
