@@ -338,6 +338,6 @@ local ok, errmsg = pcall(filter, parse_filter_options(arg))
 if ok then
     os.exit(0)
 else
-    io.stderr:write(errmsg)
+    io.stderr:write(errmsg, "\n")
     os.exit(1)
 end

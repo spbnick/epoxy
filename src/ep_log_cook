@@ -192,6 +192,6 @@ local ok, errmsg = pcall(cook)
 if ok then
     os.exit(0)
 else
-    io.stderr:write(errmsg)
+    io.stderr:write(errmsg, "\n")
     os.exit(1)
 end
