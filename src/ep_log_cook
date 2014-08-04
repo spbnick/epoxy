@@ -8,8 +8,21 @@
 -- to use, modify, copy, or redistribute it subject to the terms
 -- and conditions of the GNU General Public License version 2.
 
+---
+-- Execute a command and check if it returned zero exit status
+--
+-- @param command   Command to execute.
+--
+-- @return True if command succeeded, false otherwise.
+--
+local function command_succeeded(command)
+    local status = os.execute(command)
+    -- Handle both Lua 5.1 and Lua 5.2
+    return status == 0 or status == true
+end
+
 --- TTY output flag - true if stdout is connected to a terminal
-local ISATTY = os.execute("test -t 1") == 0
+local ISATTY = command_succeeded("test -t 1")
 
 --- Status code -> name map
 local STATUS_CODE_NAME = {
