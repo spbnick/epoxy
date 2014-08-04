@@ -328,7 +328,7 @@ local function filter(filter)
     end
 
     if #stack > 0 then
-        error(("Unterminated assertion %s, " ..
+        error(("Unterminated assertion \"%s\", " ..
                "cannot determine filter outcome"):format(stack[#stack].path))
     end
 end
