@@ -77,7 +77,7 @@ An example of a typical suite executable (try running it):
     #!/bin/bash
 
     # Add Epoxy module directory to PATH
-    eval "`ep_env || echo exit 1`"
+    . <(ep_env || echo exit 1)
 
     # Source epoxy modules
     . ep.sh
