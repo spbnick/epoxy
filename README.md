@@ -1,7 +1,8 @@
-EPOXY
-a Bash testing framework
+Epoxy
+=====
 
-Named after the stronger kind of glue.
+> — a Bash testing framework.
+> Named after the stronger kind of glue.
 
 Development status: base functionality implemented, the framework is useful,
 many more features planned, bugs likely exist.
@@ -9,14 +10,15 @@ many more features planned, bugs likely exist.
 See a presentation comparing Epoxy to BeakerLib:
 http://slides.com/spbnick/epoxy
 
-INSTALLATION
+Installation
+------------
 
 Requirements:
 
-    * Bash >= 3.2.25
-    * Lua >= 5.1
-    * Python >= 2.4.3
-    * Thud (https://github.com/spbnick/thud)
+* Bash >= 3.2.25
+* Lua >= 5.1
+* Python >= 2.4.3
+* Thud (https://github.com/spbnick/thud)
 
 Autoconf and automake are needed for installing from git.
 
@@ -27,17 +29,18 @@ Installing from distribution tarball:
 ./configure && make install
 
 
-INTRODUCTION
+Introduction
+------------
 
 NOTE: below the word "assertion" used alone usually means
       "assertion verification".
 
 Main features:
 
-    * Nesting assertions
-    * Ability to verify selected assertions only
-    * Verified setup and teardown execution
-    * Terse output by default, verbose when requested
+* Nesting assertions
+* Ability to verify selected assertions only
+* Verified setup and teardown execution
+* Terse output by default, verbose when requested
 
 Each assertion has a name, can have a brief description and a failure reason
 description attached. Names of nested assertions are combined into paths with
