@@ -66,7 +66,7 @@ local function parse_options(arg_list, usage, opt_list)
         local name, value
         -- For each option description
         for _, opt in ipairs(opt_list) do
-            local short_name, long_name, req_val, apply = unpack(opt)
+            local short_name, long_name, req_val, apply = table.unpack(opt)
 
             if arg == "-" .. short_name or arg == "--" .. long_name then
                 name = arg

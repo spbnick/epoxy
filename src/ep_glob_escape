@@ -136,7 +136,7 @@ if #parameters ~= 1 then
     os.exit(status.ERROR)
 end
 
-local text = unpack(parameters)
+local text = table.unpack(parameters)
 
 -- Escape
 local ok, escaped_text_or_err = pcall(set_item

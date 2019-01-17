@@ -156,7 +156,7 @@ end
 -- @return True if matched, false otherwise.
 --
 function match_char_set(set, c)
-    local negative, range_list = unpack(set)
+    local negative, range_list = table.unpack(set)
 
     for _, range in ipairs(range_list) do
         if c >= range[1] and c <= range[2] then
@@ -494,7 +494,7 @@ if #parameters ~= 2 then
     os.exit(status.ERROR)
 end
 
-local pattern, text = unpack(parameters)
+local pattern, text = table.unpack(parameters)
 
 -- Match
 local ok, ps_or_error, ts =
